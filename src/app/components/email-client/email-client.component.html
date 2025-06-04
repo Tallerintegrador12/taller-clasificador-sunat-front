@@ -1,0 +1,409 @@
+<!-- Agregar event listener para atajos de teclado en el div principal -->
+<div class="flex h-screen bg-gray-50" (keydown)="handleKeyboardShortcut($event)" tabindex="0">
+  <!-- Sidebar -->
+  <div class="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200">
+      <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="fas fa-envelope text-blue-600"></i>
+        MailPro
+      </h1>
+    </div>
+
+    <!-- Navigation -->
+    <div class="flex-1 overflow-y-auto">
+      <!-- Folders -->
+      <div class="p-4">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Carpetas</h2>
+        <nav class="space-y-1">
+          <button
+            *ngFor="let folder of folders"
+            (click)="selectFolder(folder.id)"
+            [class]="getFolderButtonClass(folder.id)"
+          >
+            <div class="flex items-center gap-3">
+              <i [class]="'fas fa-' + folder.icon + ' w-5 h-5'"></i>
+              <span>{{ folder.name }}</span>
+            </div>
+            <span
+              *ngIf="folder.count > 0"
+              [class]="getFolderCountClass(folder.id)"
+            >
+                  {{ folder.count }}
+                </span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Labels -->
+      <div class="p-4 border-t border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Etiquetas</h2>
+        <div class="space-y-1">
+          <button
+            *ngFor="let label of labels"
+            (click)="toggleLabelFilter(label.id)"
+            [class]="getLabelButtonClass(label.id)"
+          >
+            <div [class]="'w-3 h-3 rounded-full ' + label.color"></div>
+            <span>{{ label.name }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Top Bar -->
+    <div class="bg-white border-b border-gray-200 p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4 flex-1">
+          <!-- Search -->
+          <div class="relative flex-1 max-w-md">
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input
+              type="text"
+              placeholder="Buscar correos..."
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchChange($event)"
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <!-- Quick Filters -->
+          <div class="flex items-center gap-2">
+            <button
+              (click)="toggleFilter('read', false)"
+              [class]="getFilterButtonClass('read', false)"
+            >
+              No leídos
+            </button>
+            <button
+              (click)="toggleFilter('starred', true)"
+              [class]="getFilterButtonClass('starred', true)"
+            >
+              Destacados
+            </button>
+            <button
+              (click)="toggleFilter('hasAttachment', true)"
+              [class]="getFilterButtonClass('hasAttachment', true)"
+            >
+              Con adjuntos
+            </button>
+            <button
+              (click)="toggleFilter('priority', 'high')"
+              [class]="getFilterButtonClass('priority', 'high')"
+            >
+              Alta prioridad
+            </button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <!-- En la sección de Actions del Top Bar, reemplazar el div existente con: -->
+        <div class="flex items-center gap-2">
+          <!-- Contador de seleccionados -->
+          <span *ngIf="selectedEmails.size > 0" class="text-sm text-gray-600 mr-3">
+            {{ selectedEmails.size }} seleccionado(s)
+          </span>
+
+          <!-- Botones de acción -->
+          <div class="flex items-center gap-1" *ngIf="selectedEmails.size > 0">
+            <button
+              (click)="markAllAsRead()"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Marcar como leído"
+            >
+              <i class="fas fa-envelope-open"></i>
+            </button>
+            <button
+              (click)="archiveSelectedEmails()"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Archivar"
+            >
+              <i class="fas fa-archive"></i>
+            </button>
+            <button
+              (click)="deleteSelectedEmails()"
+              class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Eliminar"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+            <button
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Añadir etiqueta"
+            >
+              <i class="fas fa-tag"></i>
+            </button>
+            <div class="w-px h-6 bg-gray-300 mx-1"></div>
+            <button
+              (click)="clearSelection()"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Limpiar selección"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Botones generales -->
+          <div class="flex items-center gap-1">
+            <button
+              (click)="refreshEmails()"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Actualizar"
+            >
+              <i class="fas fa-sync-alt"></i>
+            </button>
+            <button
+              (click)="clearAllFilters()"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Limpiar filtros"
+              *ngIf="filters.read !== null || filters.starred !== null || filters.priority !== null || filters.hasAttachment !== null || filters.labels.length > 0 || searchTerm"
+            >
+              <i class="fas fa-filter"></i>
+              <i class="fas fa-times text-xs"></i>
+            </button>
+            <div class="relative">
+              <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <i class="fas fa-cog"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agregar estado vacío cuando no hay correos -->
+      <div
+        *ngIf="(filteredEmails$ | async)?.length === 0"
+        class="flex-1 flex items-center justify-center p-8"
+      >
+        <div class="text-center">
+          <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No hay correos</h3>
+          <p class="text-gray-500 max-w-sm">
+      <span *ngIf="searchTerm || filters.read !== null || filters.starred !== null || filters.priority !== null || filters.hasAttachment !== null || filters.labels.length > 0">
+        No se encontraron correos que coincidan con los filtros aplicados.
+      </span>
+            <span *ngIf="!searchTerm && filters.read === null && filters.starred === null && filters.priority === null && filters.hasAttachment === null && filters.labels.length === 0">
+        Tu bandeja de entrada está vacía.
+      </span>
+          </p>
+          <button
+            *ngIf="searchTerm || filters.read !== null || filters.starred !== null || filters.priority !== null || filters.hasAttachment !== null || filters.labels.length > 0"
+            (click)="clearAllFilters()"
+            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email List -->
+    <div class="flex-1 overflow-hidden">
+      <div class="h-full overflow-y-auto">
+        <div class="divide-y divide-gray-100">
+
+          <div *ngFor="let email of filteredEmails$ | async; trackBy: trackByEmailId"
+            (click)="selectEmail(email)"
+            [class]="getEmailRowClass(email)"
+          >
+
+            <!-- Checkbox -->
+            <input
+              type="checkbox"
+              [checked]="selectedEmails.has(email.id)"
+              (change)="toggleEmailSelection(email.id, $event)"
+              (click)="$event.stopPropagation()"
+              class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+
+            <!-- Avatar -->
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4">
+              {{ email.avatar }}
+            </div>
+
+            <!-- Email Content -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                      <span [class]="getFromNameClass(email)">
+                        {{ email.fromName }}
+                      </span>
+                  <i
+                    *ngIf="email.priority === 'high'"
+                    class="fas fa-exclamation-circle text-red-500"
+                  ></i>
+                  <i
+                    *ngIf="email.priority === 'medium'"
+                    class="fas fa-clock text-yellow-500"
+                  ></i>
+                  <i
+                    *ngIf="email.hasAttachment"
+                    class="fas fa-paperclip text-gray-400"
+                  ></i>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-500">{{ email.time }}</span>
+                  <button
+                    (click)="toggleStarred(email.id, $event)"
+                    [class]="getStarButtonClass(email.starred)"
+                  >
+                    <i [class]="getStarIconClass(email.starred)"></i>
+                  </button>
+                </div>
+              </div>
+              <div [class]="getSubjectClass(email)">
+                {{ email.subject }}
+              </div>
+              <div class="text-sm text-gray-500 truncate mb-2">
+                {{ email.preview }}
+              </div>
+              <div class="flex gap-1" *ngIf="email.labels.length > 0">
+                    <span
+                      *ngFor="let labelId of email.labels"
+                      [class]="'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ' + getLabelColor(labelId)"
+                    >
+                      {{ getLabelName(labelId) }}
+                    </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Detail Panel -->
+  <div
+    *ngIf="selectedEmail"
+    class="w-288 bg-white border-l border-gray-200 flex flex-col"
+  >
+    <div class="p-4 border-b border-gray-200">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-gray-900">Detalles del correo</h3>
+        <button
+          (click)="closeEmailDetail()"
+          class="text-gray-400 hover:text-gray-600 text-xl"
+        >
+          ×
+        </button>
+      </div>
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+          {{ selectedEmail.avatar }}
+        </div>
+        <div>
+          <div class="font-medium text-gray-900">{{ selectedEmail.fromName }}</div>
+          <div class="text-sm text-gray-500">{{ selectedEmail.from }}</div>
+        </div>
+      </div>
+      <h4 class="font-medium text-gray-900 mb-2">{{ selectedEmail.subject }}</h4>
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <span>{{ selectedEmail.time }}</span>
+        <span *ngIf="selectedEmail.hasAttachment">•</span>
+        <i *ngIf="selectedEmail.hasAttachment" class="fas fa-paperclip"></i>
+        <span *ngIf="selectedEmail.hasAttachment">Adjunto</span>
+      </div>
+    </div>
+
+    <div class="flex-1 p-4 overflow-y-auto">
+      <div class="prose prose-sm max-w-none">
+        <p class="text-gray-700 leading-relaxed whitespace-pre-line">
+          {{ selectedEmail.content }}
+        </p>
+      </div>
+
+      <!-- Attachments -->
+      <div *ngIf="selectedEmail.attachments && selectedEmail.attachments.length > 0" class="mt-6">
+        <h5 class="font-medium text-gray-900 mb-3">Adjuntos</h5>
+        <div class="space-y-2">
+          <div
+            *ngFor="let attachment of selectedEmail.attachments"
+            class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+          >
+            <i class="fas fa-file text-gray-400"></i>
+            <div class="flex-1">
+              <div class="font-medium text-sm text-gray-900">{{ attachment.name }}</div>
+              <div class="text-xs text-gray-500">{{ attachment.size }}</div>
+            </div>
+            <button class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              Descargar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agregar más opciones en el panel de detalles del correo -->
+    <div class="p-4 border-t border-gray-200">
+      <div class="flex gap-2 mb-3">
+        <button class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <i class="fas fa-reply"></i>
+          Responder
+        </button>
+        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+          <i class="fas fa-share"></i>
+          Reenviar
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <button
+          (click)="printEmail()"
+          class="flex-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
+        >
+          <i class="fas fa-print"></i>
+          Imprimir
+        </button>
+        <button class="flex-1 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2">
+          <i class="fas fa-archive"></i>
+          Archivar
+        </button>
+        <button class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Indicador de carga -->
+  <div *ngIf="false" class="flex-1 flex items-center justify-center">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+      <p class="text-gray-500">Cargando correos...</p>
+    </div>
+  </div>
+
+  <!-- Toast notifications (opcional) -->
+  <div class="fixed bottom-4 right-4 z-50" *ngIf="false">
+    <div class="bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+      <i class="fas fa-check-circle"></i>
+      <span>Acción completada exitosamente</span>
+      <button class="ml-2 text-white hover:text-gray-200">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- HTML para múltiples toasts -->
+<div class="toasts-container">
+  <div
+    *ngFor="let toast of toasts; "
+    class="toast-item"
+    [ngClass]="'toast-' + toast.type">
+    <div class="toast-content">
+      <span class="toast-icon" [ngSwitch]="toast.type">
+        <span *ngSwitchCase="'success'">✓</span>
+        <span *ngSwitchCase="'error'">⚠</span>
+        <span *ngSwitchCase="'info'">ℹ</span>
+      </span>
+      <span class="toast-message">{{ toast.message }}</span>
+      <button class="toast-close" (click)="removeToast(toast.id)">
+        ×
+      </button>
+    </div>
+  </div>
+</div>

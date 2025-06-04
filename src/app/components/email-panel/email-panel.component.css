@@ -1,0 +1,95 @@
+.mail-item-dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.drop-zone-active {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3B82F6;
+}
+
+.resize-handle {
+  cursor: col-resize;
+}
+
+.resize-handle:hover {
+  background-color: #3B82F6;
+}
+
+
+.email-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.plantilla-container {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-fecha {
+  background-color: #1e40af;
+  color: white;
+  padding: 10px 20px;
+  font-weight: bold;
+}
+
+.info-empresa {
+  background-color: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.info-empresa div {
+  margin: 5px 0;
+  font-weight: bold;
+}
+
+.numero-orden {
+  background-color: #e3f2fd;
+  padding: 15px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #1565c0;
+  border-bottom: 1px solid #ddd;
+}
+
+.contenido-dinamico {
+  padding: 20px;
+}
+
+.btn-pague-aqui {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 15px 0;
+  font-size: 14px;
+}
+
+.btn-pague-aqui:hover {
+  background-color: #1976d2;
+}
+
+.nota {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.nota ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.nota li {
+  margin: 5px 0;
+  font-size: 14px;
+}

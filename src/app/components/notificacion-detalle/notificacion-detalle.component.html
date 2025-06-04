@@ -1,0 +1,17 @@
+<div *ngIf="notificacion">
+  <h2>Notificación para {{ notificacion.nomb_usuario }}</h2>
+  <h2>Rud: {{notificacion.cod_usuario}}</h2>
+  <div class="mensaje" [innerHTML]="notificacion.msj_mensaje"></div>
+
+  <h3>Adjuntos</h3>
+  <ul *ngIf="notificacion.list_attach?.length">
+    <li *ngFor="let adjunto of notificacion.list_attach">
+      @if(adjunto.nom_archivo){
+        <span *ngIf="adjunto.nom_adjunto">{{ adjunto.nom_adjunto }}</span>
+        <span *ngIf="!adjunto.nom_adjunto">Sin nombre de archivo</span>
+
+      }
+
+    </li>
+  </ul>
+</div>
