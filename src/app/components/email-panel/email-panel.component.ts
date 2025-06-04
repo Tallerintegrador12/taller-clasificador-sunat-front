@@ -58,7 +58,7 @@ export class EmailPanelComponent implements OnInit {
   @ViewChild('mailList') mailListRef!: ElementRef;
 
   // API Base URL
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net//api';
 
   // Data
   mensajes: MensajeSunat[] = [];

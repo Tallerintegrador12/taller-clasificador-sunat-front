@@ -10,7 +10,7 @@ import {Etiqueta, MensajeSunat, RespuestaControlador} from '../models/mesage-sun
   providedIn: 'root'
 })
 export class MailService {
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net//api';
 
   // Observables para estado reactivo
   private mensajesSubject = new BehaviorSubject<MensajeSunat[]>([]);
