@@ -5,7 +5,7 @@ import {Notificacion} from '../models/notificacion';
 
 @Injectable({ providedIn: 'root' })
 export class NotificacionService {
-  private apiUrl = 'http://localhost:8080/api/sunat/notificaciones';
+  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net/api/sunat/notificaciones';
 
   constructor(private http: HttpClient) {}
 
