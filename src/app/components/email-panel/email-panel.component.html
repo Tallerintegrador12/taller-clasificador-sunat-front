@@ -14,7 +14,7 @@
 
         <div class="flex items-center space-x-4">
           <div class="text-sm text-gray-600">
-            Bienvenido, <span class="font-medium">AVINETRI</span>
+            Bienvenido, <span class="font-medium">{{getUserInfo()}}</span>
           </div>
           <button
             (click)="logout()"
@@ -162,7 +162,7 @@
           [class]="'group p-4 border-b border-gray-100 cursor-pointer transition-all duration-200 ' +
                        (selectedMails.includes(mail.nu_codigo_mensaje) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50') +
                        (mail.nu_leido === 0 ? ' border-l-4 border-l-blue-500' : '')"
-          (click)="selectMail(mail, $event);openMail(mail);openDetail(mail.nu_codigo_mensaje.toString())"
+          (click)="selectMail(mail, $event);openMail(mail);openDetail(mail.nu_codigo_mensaje.toString(), mail.vc_codigo_etiqueta)"
           draggable="true"
           (dragstart)="onDragStart($event, mail)"
           (dragend)="onDragEnd($event)"
@@ -198,7 +198,7 @@
               </div>
 
               <h3 [class]="'text-sm mb-1 ' + (mail.nu_leido === 0 ? 'font-semibold text-gray-900' : 'text-gray-700')">
-                {{ mail.vc_asunto }}
+                {{ decode(mail.vc_asunto) }}
               </h3>
 
               <div class="flex items-center justify-between">
@@ -250,7 +250,7 @@
         <div class="p-6 border-b border-gray-200">
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
-              <h1 class="text-xl font-semibold text-gray-900 mb-2">{{ selectedMailDetail.vc_asunto }}</h1>
+              <h1 class="text-xl font-semibold text-gray-900 mb-2">{{ decode(selectedMailDetail.vc_asunto) }}</h1>
               <div class="flex items-center space-x-4 text-sm text-gray-600">
                 <div class="flex items-center space-x-2">
                   <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-xs">
@@ -318,7 +318,22 @@
               <br>
               <br>
             </div>
-            <div class="mensaje" [innerHTML]="detalleEmail.msj_mensaje"></div>
+
+            <ng-container [ngSwitch]="tipo">
+              <!--<app-resumen-facturas *ngSwitchCase="'resumen-facturas'" [data]="datos"></app-resumen-facturas>-->
+              <app-mensaje-normal *ngSwitchCase="'mensaje-normal'" [data]="datos"></app-mensaje-normal>
+              <app-resumen-compras-ventas *ngSwitchCase="'resumen-compras-ventas'" [data]="datos"></app-resumen-compras-ventas>
+              <app-resoluciones-fiscalizacion *ngSwitchCase="'resoluciones-fiscalizacion'" [data]="datos"></app-resoluciones-fiscalizacion>
+              <app-resoluciones-contenciosas *ngSwitchCase="'resoluciones-contenciosas'" [data]="datos"></app-resoluciones-contenciosas>
+              <app-resoluciones-cobranza *ngSwitchCase="'resoluciones-cobranza'" [data]="datos"></app-resoluciones-cobranza>
+              <app-valores *ngSwitchCase="'valores'" [data]="datos"></app-valores>
+              <app-comprobantes-rhe *ngSwitchCase="'comprobantes-rhe'" [data]="datos"></app-comprobantes-rhe>
+              <app-comprobantes-rhe-fe *ngSwitchCase="'comprobantes-rhe-fe'" [data]="datos"></app-comprobantes-rhe-fe>
+              <app-notificaciones-anteriores *ngSwitchCase="'constancia-notificacion'" [data]="datos"></app-notificaciones-anteriores>
+              <div *ngSwitchDefault><div class="mensaje" [innerHTML]="detalleEmail.msj_mensaje"></div></div>
+            </ng-container>
+
+
 
           }
         </div>

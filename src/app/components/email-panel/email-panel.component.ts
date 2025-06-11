@@ -1,11 +1,33 @@
-import {Component, ElementRef, HostListener, inject, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, HostListener, inject, Input, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import {MailService} from '../../services/mensaje-sunat.service';
 import {Router} from '@angular/router';
 import {Notificacion} from '../../models/notificacion';
 import {NotificacionService} from '../../services/notificacion.service';
+import {environment} from '../../../environments/environment';
+import {UsuarioAutenticado} from '../../models/usuario';
+import {Subscription} from 'rxjs';
+import {AuthService} from '../../services/auth.service';
+import {
+  ResumenComprasVentasComponent
+} from '../templates-email/resumen-compras-ventas/resumen-compras-ventas.component';
+import {MensajeNormalComponent} from '../templates-email/mensaje-normal/mensaje-normal.component';
+import {NotificacionDetalleComponent} from '../notificacion-detalle/notificacion-detalle.component';
+import {
+  NotificacionesAnterioresComponent
+} from '../templates-email/notificaciones-anteriores/notificaciones-anteriores.component';
+import {
+  ResolucionesFiscalizacionComponent
+} from '../templates-email/resoluciones-fiscalizacion/resoluciones-fiscalizacion.component';
+import {
+  ResolucionesContenciosasComponent
+} from '../templates-email/resoluciones-contenciosas/resoluciones-contenciosas.component';
+import {ResolucionesCobranzaComponent} from '../templates-email/resoluciones-cobranza/resoluciones-cobranza.component';
+import {ValoresComponent} from '../templates-email/valores/valores.component';
+import {ComprobantesRheComponent} from '../templates-email/comprobantes-rhe/comprobantes-rhe.component';
+import {ComprobantesRheFeComponent} from '../templates-email/comprobantes-rhe-fe/comprobantes-rhe-fe.component';
 
 
 // Interfaces basadas en tu API
@@ -50,15 +72,21 @@ interface RespuestaControlador<T> {
 
 @Component({
   selector: 'app-email-panel',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ResumenComprasVentasComponent, MensajeNormalComponent, NotificacionesAnterioresComponent, ResolucionesFiscalizacionComponent, ResolucionesContenciosasComponent, ResolucionesCobranzaComponent, ValoresComponent, ComprobantesRheComponent, ComprobantesRheFeComponent],
   templateUrl: './email-panel.component.html',
   styleUrl: './email-panel.component.css'
 })
-export class EmailPanelComponent implements OnInit {
+export class EmailPanelComponent implements OnInit, OnDestroy{
   @ViewChild('mailList') mailListRef!: ElementRef;
 
   // API Base URL
-  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net//api';
+  private apiUrl = environment.apiUrl;
+  currentUser: UsuarioAutenticado | null = null;
+  private userSubscription: Subscription = new Subscription();
+
+  @Input() msjMensaje: string = '';
+  tipo: string = '';
+  datos: any = {};
 
   // Data
   mensajes: MensajeSunat[] = [];
@@ -93,39 +121,105 @@ export class EmailPanelComponent implements OnInit {
     private http: HttpClient,
     private service: MailService,
     private router: Router,
-    private servicioDetalle: NotificacionService
+    private servicioDetalle: NotificacionService,
+    private authService: AuthService,
   ) {}
 
   ngOnInit() {
-    this.loadMails();
+    // Suscribirse a los cambios del usuario autenticado
+    this.userSubscription = this.authService.getCurrentUser().subscribe(
+      user => {
+        this.currentUser = user;
+        if (!user) {
+          // Si no hay usuario autenticado, redirigir al login
+          this.router.navigate(['/login']);
+        }
+      }
+    );
+
+    // Verificar autenticación al cargar el componente
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    // Cargar datos iniciales
+    this.loadInitialData();
     this.loadLabels();
   }
-  logout(): void {
-    // Limpiar datos de sesión
-    // En un caso real, limpiarías localStorage/sessionStorage
-    console.log('Cerrando sesión...');
 
-    // Redirigir al login
+  ngOnDestroy(): void {
+    this.userSubscription.unsubscribe();
+  }
+
+
+
+  /**
+   * Método para cargar datos iniciales
+   */
+  private loadInitialData(): void {
+    const userData = this.authService.getUserData();
+    if (userData) {
+      console.log(`Bienvenido ${userData.nombreUsuario} (RUC: ${userData.ruc})`);
+      // Cargar datos específicos del usuario
+      this.loadMails();
+    }
+  }
+
+  /**
+   * Método para realizar logout
+   */
+  logout(): void {
+    this.authService.logout();
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Obtener información del usuario para mostrar en la interfaz
+   */
+  getUserInfo(): string {
+    const userData = this.authService.getUserData();
+    return userData ? `${userData.nombreUsuario} (${userData.ruc})` : 'Usuario no autenticado';
+  }
 
-  // API Methods
+
+  /**
+   * Ejemplo de método para obtener datos con el RUC del usuario
+   */
+
+
+
   loadMails() {
+    const userRuc = this.authService.getUserRuc();
+
+    if (!userRuc) {
+      console.error('Usuario no autenticado');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    const params = new HttpParams().set('vc_numero_ruc', userRuc); // Usa query param
+
     this.isLoading = true;
-    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`)
+    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`, { params })
       .subscribe({
         next: (response) => {
           this.mensajes = response.datos || [];
           this.filterMails();
           this.isLoading = false;
+          console.log('Datos obtenidos:', response);
+          this.authService.updateLastActivity();
         },
         error: (error) => {
           console.error('Error loading mails:', error);
+          if (error.status === 401) {
+            this.logout();
+          }
           this.isLoading = false;
         }
       });
   }
+
 
   loadLabels() {
     this.http.get<RespuestaControlador<Etiqueta[]>>(`${this.apiUrl}/etiquetas`)
@@ -264,14 +358,76 @@ export class EmailPanelComponent implements OnInit {
     }
   }
 
-  openDetail(coMensaje: string){
+  openDetail(coMensaje: string, labelCode: string) {
     if (coMensaje) {
       this.servicioDetalle.obtenerNotificacion(coMensaje).subscribe({
-        next: (data) => (this.detalleEmail= data),
-        error: (err) => console.error('Error al cargar notificación', err),
+        next: (data) => {
+          this.detalleEmail= data
+
+          try {
+            this.datos = JSON.parse(data.msj_mensaje);
+            this.tipo = this.getTemplateType(this.datos, labelCode);
+          } catch (error) {
+            console.error('Error al parsear el mensaje', error);
+            this.tipo = 'desconocido';
+          }
+        },
+        error: (err) => {
+          console.error('Error al cargar notificación', err)
+        }
       });
     }
   }
+
+  getTemplateType(data: any, labelCode: string): string {
+
+    if(labelCode === '14'){
+      return 'resoluciones-fiscalizacion'
+    }
+
+    if(labelCode === '13'){
+      return 'resoluciones-contenciosas'
+    }
+
+    if(labelCode === '11'){
+      return 'resoluciones-cobranza'
+    }
+
+    if(labelCode === '10'){
+      return 'valores'
+    }
+
+    if ('tbodyCompras' in data && 'tbodyVentas' in data) {
+      return 'resumen-compras-ventas';
+    }
+
+    if ('pro_fa_pend' in data) {
+      return 'comprobantes-rhe';
+    }
+
+    if ('sistema' in data && data.sistema === '6') {
+      return 'constancia-notificacion';
+    }
+
+    if('horaDesc' in data){
+      return 'comprobantes-rhe-fe';
+    }
+
+    return 'desconocido';
+  }
+
+  decode(text: string): string {
+    return decodeURIComponent(text
+      .replace(/ï¿½/g,'ó')
+      .replace(/%26%23243;/g, 'ó')
+      .replace(/%26%23176;/g, '°')
+      .replace(/%26%23233;/g, 'é')
+      .replace(/&oacute;/g, 'ó')
+    )
+  }
+
+
+
 
   toggleMailSelection(mailId: number) {
     const index = this.selectedMails.indexOf(mailId);

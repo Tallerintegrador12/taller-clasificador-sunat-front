@@ -1,0 +1,34 @@
+<div class="contenedor-sunat">
+  <div class="banner-superior">
+    <p class="fecha">Fecha de depósito {{ data.fecha_deposito }}</p>
+  </div>
+
+  <div class="contenido">
+    <p><strong>RUC {{ data.numruc }} - {{ data.nombre }}</strong></p>
+
+    <p>
+        La presente acredita el depósito de la
+      @if(data.des_tip_doc){
+        {{decode(data.des_tip_doc) +' N°'}} <a [href]="getUrlDoc(data.num_doc)" target="_blank" class="text-blue-600 underline hover:text-blue-800">{{ decode(data.num_doc) }}</a>
+      }
+      <a [href]="getUrlDoc(data.num_doc)" target="_blank" class="text-blue-600 underline hover:text-blue-800">{{ decode(data.numero) }}</a>
+      de conformidad con lo establecido en el Artículo 4 de la Resolución de Superintendencia N° 014-2008/SUNAT y modificatorias.
+    </p>
+
+    <hr />
+
+    <p><strong>Nota:</strong></p>
+    <ul>
+      <li>
+        La notificación se considera efectuada en la fecha del depósito del documento en el Buzón Electrónico SOL,
+        de conformidad con lo establecido en el inciso b) del Artículo 104° del Código Tributario.
+
+      </li>
+    </ul>
+  </div>
+
+  <div class="banner-inferior">
+    Inciso b) del artículo 104° del C.T. y R.S. N° 014-2008/SUNAT y modificatorias
+    <img src="https://ww1.sunat.gob.pe/a/imagenes/notifica/nvo_sunat.gif" alt="SUNAT Logo" class="logo-sunat" />
+  </div>
+</div>

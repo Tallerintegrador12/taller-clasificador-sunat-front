@@ -1,0 +1,33 @@
+<div class="contenedor-sunat">
+  <div class="banner-superior">
+<!--    <h1>Constancia de Notificación</h1>
+    <p class="fecha">Fecha de depósito {{ data.fecha_deposito }}</p>-->
+  </div>
+
+  <div class="contenido">
+    <p><strong>RUC {{ data.numruc }} - {{ data.nombre }}</strong></p>
+
+    <strong>Estimado Contribuyente: </strong>
+
+    <p>
+
+      Mediante la presente le remitimos la información de los comprobantes de pago puestos a disposición en la
+      <strong>Plataforma de confirmación del RHE y de la FE</strong> el dia {{decode(data.fechaDesc) }} a {{data.horaDesc}}
+      , los cuales puede consultar a través de Sunat Operaciones en Línea.
+    </p>
+    <p class="mt-4">
+      Adjuntamos el (los) archivo(s) con el detalle de los comprobantes.
+      <span class="mt-4">
+        Atentamente,
+      </span>
+      <strong>SUNAT</strong>
+
+    </p>
+
+  </div>
+
+  <div class="banner-inferior">
+    Inciso b) del artículo 104° del C.T. y R.S. N° 014-2008/SUNAT y modificatorias
+    <img src="https://ww1.sunat.gob.pe/a/imagenes/notifica/nvo_sunat.gif" alt="SUNAT Logo" class="logo-sunat" />
+  </div>
+</div>
