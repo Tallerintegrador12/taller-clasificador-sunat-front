@@ -1,0 +1,33 @@
+<div class="contenedor-sunat">
+  <div class="banner-superior">
+    <h1>Constancia de Notificación</h1>
+    <p class="fecha">Fecha de depósito {{ data.fecha_deposito }}</p>
+  </div>
+
+  <div class="contenido">
+    <p><strong>RUC {{ data.numruc }} - {{ data.nombre }}</strong></p>
+
+    <p>
+      La presente constancia acredita el depósito de la {{decode(data.tipo_doc)}} N°
+      <a [href]="getUrl(data.numero)" target="_blank" class="text-blue-600 underline hover:text-blue-800">{{ decode(data.numero) }}</a>
+      de conformidad con lo establecido en el Artículo 4 de la Resolución de
+      Superintendencia N° 014-2008/SUNAT y modificatorias.
+    </p>
+
+    <hr />
+
+    <p><strong>Nota:</strong></p>
+    <ul>
+      <li>
+        La notificación se considerará efectuada y surtirá efectos al día hábil siguiente
+        a la fecha de depósito del documento, de conformidad con lo establecido por el
+        Inciso b) del Artículo 104° y el Artículo 106° del T.U.O. del Código Tributario.
+      </li>
+    </ul>
+  </div>
+
+  <div class="banner-inferior">
+    Inciso b) del artículo 104° del C.T. y R.S. N° 014-2008/SUNAT y modificatorias
+    <img src="https://ww1.sunat.gob.pe/a/imagenes/notifica/nvo_sunat.gif" alt="SUNAT Logo" class="logo-sunat" />
+  </div>
+</div>

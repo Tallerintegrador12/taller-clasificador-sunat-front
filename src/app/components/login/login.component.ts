@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import {AuthService} from '../../services/auth.service';
 
 interface Usuario {
   ruc: string;
@@ -156,9 +157,9 @@ export class LoginComponent implements OnInit {
       clave: "123456"
     },
     {
-      ruc: "20456789123",
-      nombreUsuario: "gerente",
-      clave: "gerente2024"
+      ruc: "20603704453",
+      nombreUsuario: "OOKEENTI",
+      clave: "123456"
     },
     {
       ruc: "20789123456",
@@ -174,7 +175,8 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {
     this.loginForm = this.fb.group({
       ruc: ['', Validators.required],
@@ -186,6 +188,11 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     // Limpiar cualquier mensaje de error al inicializar
     this.errorMessage = '';
+
+    // Verificar si ya está autenticado
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/panel-email']);
+    }
   }
 
   togglePassword(): void {
@@ -209,15 +216,16 @@ export class LoginComponent implements OnInit {
         );
 
         if (usuarioValido) {
-          // Login exitoso - guardar datos del usuario en sessionStorage
+          // Login exitoso - guardar datos del usuario usando el servicio
           const userData = {
             ruc: usuarioValido.ruc,
             nombreUsuario: usuarioValido.nombreUsuario,
             loginTime: new Date().toISOString()
           };
 
-          // Nota: En un entorno real, usarías localStorage o sessionStorage
-          // Aquí simulamos el almacenamiento
+          // Guardar en localStorage usando el servicio
+          this.authService.saveUserData(userData);
+
           console.log('Usuario autenticado:', userData);
 
           // Redireccionar al panel-email

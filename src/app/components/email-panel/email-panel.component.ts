@@ -1,11 +1,33 @@
-import {Component, ElementRef, HostListener, inject, OnInit, ViewChild} from '@angular/core';
+import {Component, ElementRef, HostListener, inject, Input, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import {MailService} from '../../services/mensaje-sunat.service';
 import {Router} from '@angular/router';
 import {Notificacion} from '../../models/notificacion';
 import {NotificacionService} from '../../services/notificacion.service';
+import {environment} from '../../../environments/environment';
+import {UsuarioAutenticado} from '../../models/usuario';
+import {Subscription} from 'rxjs';
+import {AuthService} from '../../services/auth.service';
+import {
+  ResumenComprasVentasComponent
+} from '../templates-email/resumen-compras-ventas/resumen-compras-ventas.component';
+import {MensajeNormalComponent} from '../templates-email/mensaje-normal/mensaje-normal.component';
+import {NotificacionDetalleComponent} from '../notificacion-detalle/notificacion-detalle.component';
+import {
+  NotificacionesAnterioresComponent
+} from '../templates-email/notificaciones-anteriores/notificaciones-anteriores.component';
+import {
+  ResolucionesFiscalizacionComponent
+} from '../templates-email/resoluciones-fiscalizacion/resoluciones-fiscalizacion.component';
+import {
+  ResolucionesContenciosasComponent
+} from '../templates-email/resoluciones-contenciosas/resoluciones-contenciosas.component';
+import {ResolucionesCobranzaComponent} from '../templates-email/resoluciones-cobranza/resoluciones-cobranza.component';
+import {ValoresComponent} from '../templates-email/valores/valores.component';
+import {ComprobantesRheComponent} from '../templates-email/comprobantes-rhe/comprobantes-rhe.component';
+import {ComprobantesRheFeComponent} from '../templates-email/comprobantes-rhe-fe/comprobantes-rhe-fe.component';
 
 
 // Interfaces basadas en tu API
@@ -32,6 +54,7 @@ interface MensajeSunat {
   vc_numero_ruc: string;
   nu_leido: number;
   nu_archivado: number;
+  clasificacion?: string; // <--- NUEVO CAMPO
 }
 
 interface Etiqueta {
@@ -50,15 +73,21 @@ interface RespuestaControlador<T> {
 
 @Component({
   selector: 'app-email-panel',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ResumenComprasVentasComponent, MensajeNormalComponent, NotificacionesAnterioresComponent, ResolucionesFiscalizacionComponent, ResolucionesContenciosasComponent, ResolucionesCobranzaComponent, ValoresComponent, ComprobantesRheComponent, ComprobantesRheFeComponent],
   templateUrl: './email-panel.component.html',
   styleUrl: './email-panel.component.css'
 })
-export class EmailPanelComponent implements OnInit {
+export class EmailPanelComponent implements OnInit, OnDestroy{
   @ViewChild('mailList') mailListRef!: ElementRef;
 
   // API Base URL
-  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net//api';
+  private apiUrl = environment.apiUrl;
+  currentUser: UsuarioAutenticado | null = null;
+  private userSubscription: Subscription = new Subscription();
+
+  @Input() msjMensaje: string = '';
+  tipo: string = '';
+  datos: any = {};
 
   // Data
   mensajes: MensajeSunat[] = [];
@@ -72,12 +101,18 @@ export class EmailPanelComponent implements OnInit {
   searchTerm: string = '';
   selectedFolder: string = 'inbox';
   selectedLabel: string = '';
+  selectedClasificacion: string = ''; // <-- NUEVO CAMPO PARA CLASIFICACIÓN
   isLoading: boolean = false;
   isDragOver: boolean = false;
   mailListWidth: number = 600;
   isResizing: boolean = false;
 
-
+  // Clasificaciones configuration
+  clasificaciones = [
+    { code: 'MUY IMPORTANTE', name: 'Muy Importantes', icon: '🔴', color: 'bg-red-500' },
+    { code: 'IMPORTANTE', name: 'Importantes', icon: '🟡', color: 'bg-yellow-500' },
+    { code: 'RECURRENTE', name: 'Recurrentes', icon: '🟢', color: 'bg-green-500' }
+  ];
 
   // Folders configuration
   folders = [
@@ -93,39 +128,128 @@ export class EmailPanelComponent implements OnInit {
     private http: HttpClient,
     private service: MailService,
     private router: Router,
-    private servicioDetalle: NotificacionService
+    private servicioDetalle: NotificacionService,
+    private authService: AuthService,
   ) {}
 
   ngOnInit() {
-    this.loadMails();
+    // Suscribirse a los cambios del usuario autenticado
+    this.userSubscription = this.authService.getCurrentUser().subscribe(
+      user => {
+        this.currentUser = user;
+        if (!user) {
+          // Si no hay usuario autenticado, redirigir al login
+          this.router.navigate(['/login']);
+        }
+      }
+    );
+
+    // Verificar autenticación al cargar el componente
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    // Cargar datos iniciales
+    this.loadInitialData();
     this.loadLabels();
   }
-  logout(): void {
-    // Limpiar datos de sesión
-    // En un caso real, limpiarías localStorage/sessionStorage
-    console.log('Cerrando sesión...');
 
-    // Redirigir al login
+  ngOnDestroy(): void {
+    this.userSubscription.unsubscribe();
+  }
+
+
+
+  /**
+   * Método para cargar datos iniciales
+   */
+  private loadInitialData(): void {
+    const userData = this.authService.getUserData();
+    if (userData) {
+      console.log(`Bienvenido ${userData.nombreUsuario} (RUC: ${userData.ruc})`);
+      // Cargar datos específicos del usuario
+      this.loadMails();
+    }
+  }
+
+  /**
+   * Método para realizar logout
+   */
+  logout(): void {
+    this.authService.logout();
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Obtener información del usuario para mostrar en la interfaz
+   */
+  getUserInfo(): string {
+    const userData = this.authService.getUserData();
+    return userData ? `${userData.nombreUsuario} (${userData.ruc})` : 'Usuario no autenticado';
+  }
 
-  // API Methods
+
+  /**
+   * Ejemplo de método para obtener datos con el RUC del usuario
+   */
+
+
+
   loadMails() {
+    console.log('=== INICIANDO loadMails() ===');
+    const userRuc = this.authService.getUserRuc();
+
+    if (!userRuc) {
+      console.error('Usuario no autenticado');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    console.log('RUC del usuario:', userRuc);
+    const params = new HttpParams().set('vc_numero_ruc', userRuc); // Usa query param
+    console.log('Parámetros:', params.toString());
+
     this.isLoading = true;
-    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`)
+    console.log('URL de la API:', `${this.apiUrl}/sunat/mensajes`);
+    
+    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`, { params })
       .subscribe({
         next: (response) => {
+          console.log('=== RESPUESTA EXITOSA ===');
+          console.log('Respuesta del servidor:', response);
+          console.log('Código de respuesta:', response.nu_codigo);
+          console.log('Mensaje:', response.vc_mensaje);
+          console.log('Datos (array):', response.datos);
+          console.log('Cantidad de mensajes:', response.datos?.length || 0);
+          
           this.mensajes = response.datos || [];
+          console.log('Mensajes asignados a this.mensajes:', this.mensajes.length);
+          
+          if (this.mensajes.length > 0) {
+            console.log('Primer mensaje:', this.mensajes[0]);
+            console.log('Clasificación del primer mensaje:', this.mensajes[0].clasificacion);
+          }
+          
           this.filterMails();
           this.isLoading = false;
+          console.log('Datos obtenidos:', response);
+          this.authService.updateLastActivity();
         },
         error: (error) => {
+          console.error('=== ERROR EN loadMails() ===');
           console.error('Error loading mails:', error);
+          console.error('Status:', error.status);
+          console.error('StatusText:', error.statusText);
+          console.error('Message:', error.message);
+          if (error.status === 401) {
+            this.logout();
+          }
           this.isLoading = false;
         }
       });
   }
+
 
   loadLabels() {
     this.http.get<RespuestaControlador<Etiqueta[]>>(`${this.apiUrl}/etiquetas`)
@@ -197,6 +321,56 @@ export class EmailPanelComponent implements OnInit {
     });
   }
 
+  unarchiveMail(mail: MensajeSunat) {
+    this.updateMailProperty(mail.nu_codigo_mensaje, 'archivado', 0).subscribe({
+      next: () => {
+        mail.nu_archivado = 0;
+        this.filterMails();
+        if (this.selectedMailDetail?.nu_codigo_mensaje === mail.nu_codigo_mensaje) {
+          this.selectedMailDetail = null;
+        }
+      }
+    });
+  }
+
+  unarchiveMails() {
+    this.selectedMails.forEach(mailId => {
+      this.updateMailProperty(mailId, 'archivado', 0).subscribe({
+        next: () => {
+          const mail = this.mensajes.find(m => m.nu_codigo_mensaje === mailId);
+          if (mail) mail.nu_archivado = 0;
+          this.filterMails();
+        }
+      });
+    });
+    this.selectedMails = [];
+  }
+
+  restoreMail(mail: MensajeSunat) {
+    this.updateMailProperty(mail.nu_codigo_mensaje, 'estado', 1).subscribe({
+      next: () => {
+        mail.nu_estado = 1;
+        this.filterMails();
+        if (this.selectedMailDetail?.nu_codigo_mensaje === mail.nu_codigo_mensaje) {
+          this.selectedMailDetail = null;
+        }
+      }
+    });
+  }
+
+  restoreMails() {
+    this.selectedMails.forEach(mailId => {
+      this.updateMailProperty(mailId, 'estado', 1).subscribe({
+        next: () => {
+          const mail = this.mensajes.find(m => m.nu_codigo_mensaje === mailId);
+          if (mail) mail.nu_estado = 1;
+          this.filterMails();
+        }
+      });
+    });
+    this.selectedMails = [];
+  }
+
   deleteMails() {
     this.selectedMails.forEach(mailId => {
       this.updateMailProperty(mailId, 'estado', 0).subscribe({
@@ -224,14 +398,15 @@ export class EmailPanelComponent implements OnInit {
   selectFolder(folderCode: string) {
     this.selectedFolder = folderCode;
     this.selectedLabel = '';
+    this.selectedClasificacion = ''; // Reset clasificación
     this.selectedMails = [];
     this.filterMails();
   }
 
-  selectLabel(labelCode: string) {
-    this.selectedLabel = labelCode;
-    console.log(this.selectedLabel);
+  selectClasificacion(clasificacionCode: string) {
+    this.selectedClasificacion = clasificacionCode;
     this.selectedFolder = '';
+    this.selectedLabel = '';
     this.filterMails();
   }
 
@@ -264,14 +439,76 @@ export class EmailPanelComponent implements OnInit {
     }
   }
 
-  openDetail(coMensaje: string){
+  openDetail(coMensaje: string, labelCode: string) {
     if (coMensaje) {
       this.servicioDetalle.obtenerNotificacion(coMensaje).subscribe({
-        next: (data) => (this.detalleEmail= data),
-        error: (err) => console.error('Error al cargar notificación', err),
+        next: (data) => {
+          this.detalleEmail= data
+
+          try {
+            this.datos = JSON.parse(data.msj_mensaje);
+            this.tipo = this.getTemplateType(this.datos, labelCode);
+          } catch (error) {
+            console.error('Error al parsear el mensaje', error);
+            this.tipo = 'desconocido';
+          }
+        },
+        error: (err) => {
+          console.error('Error al cargar notificación', err)
+        }
       });
     }
   }
+
+  getTemplateType(data: any, labelCode: string): string {
+
+    if(labelCode === '14'){
+      return 'resoluciones-fiscalizacion'
+    }
+
+    if(labelCode === '13'){
+      return 'resoluciones-contenciosas'
+    }
+
+    if(labelCode === '11'){
+      return 'resoluciones-cobranza'
+    }
+
+    if(labelCode === '10'){
+      return 'valores'
+    }
+
+    if ('tbodyCompras' in data && 'tbodyVentas' in data) {
+      return 'resumen-compras-ventas';
+    }
+
+    if ('pro_fa_pend' in data) {
+      return 'comprobantes-rhe';
+    }
+
+    if ('sistema' in data && data.sistema === '6') {
+      return 'constancia-notificacion';
+    }
+
+    if('horaDesc' in data){
+      return 'comprobantes-rhe-fe';
+    }
+
+    return 'desconocido';
+  }
+
+  decode(text: string): string {
+    return decodeURIComponent(text
+      .replace(/ï¿½/g,'ó')
+      .replace(/%26%23243;/g, 'ó')
+      .replace(/%26%23176;/g, '°')
+      .replace(/%26%23233;/g, 'é')
+      .replace(/&oacute;/g, 'ó')
+    )
+  }
+
+
+
 
   toggleMailSelection(mailId: number) {
     const index = this.selectedMails.indexOf(mailId);
@@ -284,29 +521,37 @@ export class EmailPanelComponent implements OnInit {
 
   filterMails() {
     let filtered = [...this.mensajes];
+    console.log('Total mensajes cargados:', this.mensajes.length);
+    console.log('Mensajes ejemplo:', this.mensajes.slice(0, 3));
+    console.log('Selected folder:', this.selectedFolder);
+    console.log('Selected clasificacion:', this.selectedClasificacion);
 
     // Filter by folder
     switch (this.selectedFolder) {
       case 'inbox':
-        filtered = filtered.filter(m =>( m.nu_archivado=== 0 || m.nu_archivado=== null) && m.nu_estado === 1);
+        filtered = filtered.filter(m => {
+          const notArchived = !m.nu_archivado || m.nu_archivado == 0;
+          const active = m.nu_estado == 1;
+          return notArchived && active;
+        });
         break;
       case 'starred':
-        filtered = filtered.filter(m => m.nu_destacado === 1 && m.nu_estado === 1);
+        filtered = filtered.filter(m => m.nu_destacado == 1 && m.nu_estado == 1);
         break;
       case 'archived':
-        filtered = filtered.filter(m => m.nu_archivado === 1);
+        filtered = filtered.filter(m => m.nu_archivado == 1);
         break;
-      /*case 'sent':
-        filtered = filtered.filter(m => m.nu_archivado=== null);
-        break;*/
       case 'trash':
-        filtered = filtered.filter(m => m.nu_estado === 0);
+        filtered = filtered.filter(m => m.nu_estado == 0);
         break;
     }
 
-    // Filter by label
-    if (this.selectedLabel) {
-      filtered = filtered.filter(m => m.vc_codigo_etiqueta === this.selectedLabel);
+    console.log('Mensajes después del filtro de carpeta:', filtered.length);
+
+    // Filter by clasificacion (solo si hay una clasificación seleccionada)
+    if (this.selectedClasificacion) {
+      filtered = filtered.filter(m => m.clasificacion === this.selectedClasificacion);
+      console.log('Mensajes después del filtro de clasificación:', filtered.length);
     }
 
     // Filter by search term
@@ -316,9 +561,11 @@ export class EmailPanelComponent implements OnInit {
         m.vc_asunto.toLowerCase().includes(term) ||
         m.vc_usuario_emisor.toLowerCase().includes(term)
       );
+      console.log('Mensajes después del filtro de búsqueda:', filtered.length);
     }
 
     this.filteredMails = filtered;
+    console.log('Mensajes finales filtrados:', this.filteredMails.length);
     this.updateFolderCounts();
   }
 
@@ -327,10 +574,10 @@ export class EmailPanelComponent implements OnInit {
       let count = 0;
       switch (folder.code) {
         case 'inbox':
-          count = this.mensajes.filter(m =>( m.nu_archivado=== null || m.nu_archivado===0) && m.nu_estado === 1).length;
+          count = this.mensajes.filter(m => (m.nu_archivado === null || m.nu_archivado === 0) && m.nu_estado === 1).length;
           break;
         case 'starred':
-          count = this.mensajes.filter(m => m.nu_destacado === 1 && m.nu_destacado === 1).length;
+          count = this.mensajes.filter(m => m.nu_destacado === 1 && m.nu_estado === 1).length;
           break;
         case 'archived':
           count = this.mensajes.filter(m => m.nu_archivado === 1).length;
@@ -473,6 +720,10 @@ export class EmailPanelComponent implements OnInit {
   }
 
   getCurrentFolderName(): string {
+    if (this.selectedClasificacion) {
+      const clasificacion = this.clasificaciones.find(c => c.code === this.selectedClasificacion);
+      return clasificacion ? clasificacion.name : 'Clasificación';
+    }
     const folder = this.folders.find(f => f.code === this.selectedFolder);
     return folder ? folder.name : 'Correos';
   }
@@ -506,4 +757,82 @@ export class EmailPanelComponent implements OnInit {
 
   mensajeJson: any = null;
 
+  // Métodos para filtrar por clasificación
+  getCorreosMuyImportantes(): MensajeSunat[] {
+    return this.filteredMails.filter(m => m.clasificacion === 'MUY IMPORTANTE');
+  }
+  getCorreosImportantes(): MensajeSunat[] {
+    return this.filteredMails.filter(m => m.clasificacion === 'IMPORTANTE');
+  }
+  getCorreosRecurrentes(): MensajeSunat[] {
+    return this.filteredMails.filter(m => m.clasificacion === 'RECURRENTE');
+  }
+
+  // Método para obtener el conteo de correos por clasificación
+  getClasificacionCount(clasificacionCode: string): number {
+    const count = this.mensajes.filter(m => m.clasificacion === clasificacionCode).length;
+    console.log(`Conteo para ${clasificacionCode}:`, count);
+    return count;
+  }
+
+  // Método para actualizar clasificaciones existentes
+  actualizarClasificaciones() {
+    this.http.post<RespuestaControlador<string>>(`${this.apiUrl}/sunat/actualizar-clasificaciones`, {})
+      .subscribe({
+        next: (response) => {
+          console.log('Clasificaciones actualizadas:', response.vc_mensaje);
+          // Recargar los mensajes para ver los cambios
+          this.loadMails();
+        },
+        error: (error) => {
+          console.error('Error al actualizar clasificaciones:', error);
+        }
+      });
+  }
+
+  // Método de depuración para probar la carga manual
+  testLoadMails() {
+    console.log('=== INICIANDO TEST DE CARGA ===');
+    console.log('Usuario autenticado:', this.authService.isAuthenticated());
+    console.log('RUC del usuario:', this.authService.getUserRuc());
+    console.log('User Data:', this.authService.getUserData());
+    
+    const userRuc = this.authService.getUserRuc();
+    if (!userRuc) {
+      console.error('No hay RUC disponible');
+      return;
+    }
+
+    const params = new HttpParams().set('vc_numero_ruc', userRuc);
+    console.log('Parámetros a enviar:', params.toString());
+    console.log('URL completa:', `${this.apiUrl}/sunat/mensajes?${params.toString()}`);
+
+    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`, { params })
+      .subscribe({
+        next: (response) => {
+          console.log('=== RESPUESTA EXITOSA ===');
+          console.log('Response completo:', response);
+          console.log('Cantidad de mensajes:', response.datos?.length);
+          console.log('Primeros 3 mensajes:', response.datos?.slice(0, 3));
+        },
+        error: (error) => {
+          console.error('=== ERROR EN LA LLAMADA ===');
+          console.error('Error completo:', error);
+          console.error('Status:', error.status);
+          console.error('Message:', error.message);
+        }
+      });
+  }
+
+  // Método de depuración para autenticación
+  debugAuth() {
+    console.log('=== DEBUG AUTENTICACIÓN ===');
+    console.log('¿Está autenticado?:', this.authService.isAuthenticated());
+    console.log('Datos de usuario:', this.authService.getUserData());
+    console.log('RUC del usuario:', this.authService.getUserRuc());
+    console.log('Nombre del usuario:', this.authService.getUserName());
+    console.log('Usuario actual (sync):', this.authService.getCurrentUserSync());
+    console.log('LocalStorage userData:', localStorage.getItem('userData'));
+    console.log('=== FIN DEBUG AUTENTICACIÓN ===');
+  }
 }

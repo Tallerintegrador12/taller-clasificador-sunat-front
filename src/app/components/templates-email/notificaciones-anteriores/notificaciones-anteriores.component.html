@@ -1,0 +1,41 @@
+<div class="notificacion-container">
+  <header class="notificacion-header">
+    <div class="ruc-info">RUC {{ data.numruc }} - {{ data.nombre }}</div>
+    <h1>Notificaciones SOL</h1>
+  </header>
+
+  <section class="notificacion-body">
+    <div class="notificacion-destacado">
+      <strong>Constancia de Notificación</strong><br>
+      Inciso b) del artículo 104° del C.T. y R.S. N° 014-2008/SUNAT y modificatorias
+    </div>
+    <div class="notificacion-fecha">
+      Fecha de depósito<br><strong>{{ data.fecha_deposito }}</strong>
+    </div>
+
+    <p class="notificacion-mensaje">
+      La presente constancia acredita el depósito de la
+      <a
+        [href]="'https://ww1.sunat.gob.pe/cl-ti-iagenerador/descargarArchivo?codigo=' + data.id_archivo + '&tipo=0'"
+        target="_blank"
+        download
+        class="text-blue-600 underline hover:text-blue-800"
+      >
+        {{ data.numero }}
+      </a>
+      de conformidad con lo establecido en el Artículo 10 de la Resolución de Superintendencia
+      N° 014-2008/SUNAT y modificatorias.
+    </p>
+  </section>
+
+  <footer class="notificacion-footer">
+    <div class="nota-titulo">Nota:</div>
+    <ul class="nota-lista">
+      <li>
+        La notificación se considerará efectuada y surtirá efectos al día hábil siguiente a la fecha de
+        depósito del documento, de conformidad con lo establecido por el Inciso b) del Artículo 104°
+        y el Artículo 106° del T.U.O. del Código Tributario.
+      </li>
+    </ul>
+  </footer>
+</div>

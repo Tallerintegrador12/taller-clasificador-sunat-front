@@ -1,0 +1,55 @@
+.contenedor-sunat {
+  font-family: Arial, sans-serif;
+  max-width: 720px;
+  margin: auto;
+  border: 1px solid #ccc;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.banner-superior {
+  background: #005BAC;
+  color: white;
+  padding: 20px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.banner-superior h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.banner-superior .fecha {
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+.contenido {
+  background-color: white;
+  padding: 20px;
+  font-size: 14px;
+}
+
+.contenido p {
+  margin-bottom: 12px;
+}
+
+.contenido ul {
+  padding-left: 20px;
+}
+
+.banner-inferior {
+  background: #A5003C;
+  color: white;
+  padding: 12px 20px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.logo-sunat {
+  height: 24px;
+}

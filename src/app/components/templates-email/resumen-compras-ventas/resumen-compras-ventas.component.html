@@ -1,0 +1,115 @@
+<div class="sunat-container">
+  <!-- Header azul -->
+  <div class="header-blue">
+    <div class="header-content">
+      <h2>SUNAT - Comunicación Tributaria</h2>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="main-content">
+    <!-- Información de la empresa -->
+    <div class="company-info">
+      <p><strong>{{ data.nombre || 'DIME COMUNICACIONES S.A.C.' }}</strong></p>
+      <p><strong>RUC:</strong> {{ data.numruc || '20559577627' }}</p>
+      <p><strong>Estimado/a Contribuyente:</strong></p>
+    </div>
+
+    <!-- Mensaje principal -->
+    <div class="message-content">
+      <p>
+        En la SUNAT, hemos asumido el compromiso de brindarle la asistencia necesaria para que usted pueda cumplir,
+        oportuna y correctamente, con sus obligaciones tributarias.
+      </p>
+
+      <p>
+        En ese sentido, le informamos que, según la información de sus comprobantes de pago electrónicos y
+        documentos autorizados, se ha detectado la propuesta para la generación de su Registro de Compras Electrónico
+        (RCE) y Registro de Ventas e Ingresos Electrónico (RVIE) que puede acceder en
+        <a href="https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm" target="_blank">SUNAT Operaciones en Línea</a>.
+      </p>
+
+      <p>
+        A continuación, de la información de los registros electrónicos más recomendados por tipo de
+        comprobante de pago electrónico es la siguiente:
+      </p>
+    </div>
+
+    <!-- Período -->
+    <div class="period-info">
+      <p><strong>Período:</strong> {{ formatPeriod(data.periodo) }}</p>
+    </div>
+
+    <!-- Tabla de Compras -->
+    <div class="table-section">
+      <h3>RCE - Compras:</h3>
+      <table class="data-table">
+        <thead>
+        <tr>
+          <th>Tipo de Documento</th>
+          <th>Cantidad</th>
+        </tr>
+        </thead>
+        <tbody [innerHTML]="getCleanHTML(data.tbodyCompras)">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabla de Ventas -->
+    <div class="table-section">
+      <h3>RVE - Ventas:</h3>
+      <table class="data-table">
+        <thead>
+        <tr>
+          <th>Tipo de Documento</th>
+          <th>Cantidad</th>
+        </tr>
+        </thead>
+        <tbody [innerHTML]="getCleanHTML(data.tbodyVentas)">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mensaje de solicitud -->
+    <div class="request-message">
+      <p>
+        Le solicitamos que valide la propuesta y, de ser el caso, proceda a la generación del Registro de Compras y
+        Registro de Ventas e Ingresos Electrónicos a partir del octavo día del presente mes¹ y dentro de los plazos
+        máximos de atraso establecidos para su generación².
+      </p>
+
+      <p>
+        Para más información, visite nuestro micrositio:
+        <a href="https://cpe.sunat.gob.pe/" target="_blank">rce.sunat.gob.pe</a>
+      </p>
+    </div>
+
+    <!-- Firma -->
+    <div class="signature">
+      <p><strong>Atentamente,</strong></p>
+      <p><strong>SUNAT</strong></p>
+    </div>
+
+    <!-- Notas al pie -->
+    <div class="footnotes">
+      <p>
+        <small>
+          ¹ En el caso de empresas generadoras de recibos electrónicos por servicios públicos, a partir del décimo día hábil, según lo
+          establecido en la Resolución de Superintendencia N.° 000132-2021/SUNAT y modificatorias.
+        </small>
+      </p>
+      <p>
+        <small>
+          ² <a href="https://sunat.gob.pe/orientacion/cronogramas/cronoRegistroC-V-2025.html" target="_blank">
+          sunat.gob.pe/orientacion/registros/registros-Compras-V-2024.html
+        </a>
+        </small>
+      </p>
+    </div>
+  </div>
+
+  <!-- Footer con logo SUNAT -->
+  <div class="footer-sunat">
+    <div class="sunat-logo">SUNAT</div>
+  </div>
+</div>

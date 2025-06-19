@@ -3,3 +3,9 @@ export interface Usuario {
   usuario: string;
   password: string;
 }
+
+export interface UsuarioAutenticado {
+  ruc: string;
+  nombreUsuario: string;
+  loginTime: string;
+}

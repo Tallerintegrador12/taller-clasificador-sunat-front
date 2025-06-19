@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import {Etiqueta, MensajeSunat, RespuestaControlador} from '../models/mesage-sunat';
+import {environment} from '../../environments/environment';
 
 
 
@@ -10,7 +11,7 @@ import {Etiqueta, MensajeSunat, RespuestaControlador} from '../models/mesage-sun
   providedIn: 'root'
 })
 export class MailService {
-  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net//api';
+  private apiUrl = environment.apiUrl;
 
   // Observables para estado reactivo
   private mensajesSubject = new BehaviorSubject<MensajeSunat[]>([]);

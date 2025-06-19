@@ -1,0 +1,160 @@
+<div class="sunat-container">
+  <!-- Header azul -->
+  <div class="header-blue"></div>
+
+  <!-- Contenido principal -->
+  <div class="content">
+    <!-- RUC y Razón Social -->
+    <div class="ruc-section">
+      <p><strong>RUC: {{ data.numRuc }}</strong></p>
+      <p><strong>{{ data.razonSocial }}</strong></p>
+    </div>
+
+    <!-- Información del contribuyente -->
+    <div class="info-section">
+      <p class="estimado-text">Estimado contribuyente:</p>
+      <p class="description-text">
+        Mediante la presente le remitimos un resumen con información de los comprobantes de pago puestos a disposición y/o
+        atendidos en la <strong>Plataforma de Confirmación del RHE y de la FE</strong> el día <strong>{{ data.fecha }}</strong>
+      </p>
+      <p class="adquirente-text">Adquirente(Mis Compras):</p>
+    </div>
+
+    <!-- Tabla Adquirente -->
+    <div class="table-section">
+      <table class="data-table">
+        <thead>
+        <tr>
+          <th rowspan="2">Tipo de Comprobante</th>
+          <th colspan="2">Pendiente</th>
+          <th colspan="2">Pendiente</th>
+          <th colspan="2">Subsanado</th>
+          <th>Conforme</th>
+          <th>Disconforme</th>
+          <th>No válido</th>
+        </tr>
+        <tr>
+          <th>(Puesto a disposición por A.T.)</th>
+          <th>por A.T. Débito</th>
+          <th>por A.T. Débito</th>
+          <th>por A.T. Crédito</th>
+          <th>(Por A.T.)</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>Factura Electrónica</td>
+          <td>{{ data.adq_fa_pend }}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>{{ data.adq_fa_sub }}</td>
+          <td>0</td>
+          <td>{{ data.adq_fa_conf }}</td>
+          <td>{{ data.adq_fa_disc }}</td>
+          <td>{{ data.adq_fa_nval }}</td>
+        </tr>
+        <tr>
+          <td>Recibo por Honorarios Electrónico</td>
+          <td>{{ data.adq_rxh_pend }}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>{{ data.adq_rxh_sub }}</td>
+          <td>0</td>
+          <td>{{ data.adq_rxh_conf }}</td>
+          <td>{{ data.adq_rxh_disc }}</td>
+          <td>{{ data.adq_rxh_nval }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Proveedor -->
+    <div class="proveedor-section">
+      <p class="proveedor-text"><strong>Proveedor(Mis Ventas):</strong></p>
+    </div>
+
+    <!-- Tabla Proveedor -->
+    <div class="table-section">
+      <table class="data-table">
+        <thead>
+        <tr>
+          <th rowspan="2">Tipo de Comprobante</th>
+          <th colspan="2">Pendiente</th>
+          <th colspan="2">Pendiente</th>
+          <th colspan="2">Subsanado</th>
+          <th>Conforme</th>
+          <th>Disconforme</th>
+          <th>No válido</th>
+        </tr>
+        <tr>
+          <th>(Puesto a disposición por A.T.)</th>
+          <th>por A.T. Débito</th>
+          <th>por A.T. Débito</th>
+          <th>por A.T. Crédito</th>
+          <th>(Por A.T.)</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+          <th>Débito Crédito</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>Factura Electrónica</td>
+          <td>{{ data.pro_fa_pend }}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>{{ data.pro_fa_sub }}</td>
+          <td>0</td>
+          <td>{{ data.pro_fa_conf }}</td>
+          <td>{{ data.pro_fa_disc }}</td>
+          <td>{{ data.pro_fa_nval }}</td>
+        </tr>
+        <tr>
+          <td>Recibo por Honorarios Electrónico</td>
+          <td>{{ data.pro_rxh_pend }}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>{{ data.pro_rxh_sub }}</td>
+          <td>0</td>
+          <td>{{ data.pro_rxh_conf }}</td>
+          <td>{{ data.pro_rxh_disc }}</td>
+          <td>{{ data.pro_rxh_nval }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Notas al pie -->
+    <div class="notes-section">
+      <p class="note-text">
+        (*) Comprobante de pago electrónico disponible para proceso de conformidad por emisión de Nota de Crédito
+        Electrónica por "Corrección" por error en la descripción - o "Ajustes - montos y/u fechas de pago" de acuerdo al
+        numeral 7.5 del D.U. N° 013-2020.
+      </p>
+      <p class="note-text">
+        Usted puede consultar el detalle de sus comprobantes en <strong>la Plataforma de Confirmación de RHE y de la FE de Sunat
+        Operaciones en Línea.</strong>
+      </p>
+      <p class="note-text">Atentamente,</p>
+      <p class="note-text"><strong>SUNAT</strong></p>
+      <p class="footer-note">
+        "La condición de conformidad expresa o presunta del CPE sólo se refiere a la conformidad del adquirente respecto
+        del requisito señalado por el artículo 7° del Decreto de Urgencia N.° 013-2020"
+      </p>
+    </div>
+  </div>
+
+  <!-- Footer SUNAT -->
+  <div class="footer-sunat">
+    <div class="sunat-logo">SUNAT</div>
+  </div>
+</div>
