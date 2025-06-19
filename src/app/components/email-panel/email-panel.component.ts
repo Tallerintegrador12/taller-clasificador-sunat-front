@@ -195,7 +195,6 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
    */
 
 
-
   loadMails() {
     console.log('=== INICIANDO loadMails() ===');
     const userRuc = this.authService.getUserRuc();
@@ -203,8 +202,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     if (!userRuc) {
       console.error('Usuario no autenticado');
       this.router.navigate(['/login']);
-      return;
-    }
+      return;    }
 
     console.log('RUC del usuario:', userRuc);
     const params = new HttpParams().set('vc_numero_ruc', userRuc); // Usa query param
@@ -235,8 +233,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
           this.isLoading = false;
           console.log('Datos obtenidos:', response);
           this.authService.updateLastActivity();
-        },
-        error: (error) => {
+        },        error: (error) => {
           console.error('=== ERROR EN loadMails() ===');
           console.error('Error loading mails:', error);
           console.error('Status:', error.status);
