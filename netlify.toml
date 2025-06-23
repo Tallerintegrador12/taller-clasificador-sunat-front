@@ -2,8 +2,8 @@
 [build]
   # Build command (if needed)
   command = "npm run build"
-  # Directory to publish
-  publish = "dist/taller-clasificador-sunat-front"
+  # Directory to publish - MUST MATCH angular.json outputPath
+  publish = "dist/notificador-sunat-front"
 
 # Redirect rules for Angular routing
 [[redirects]]

@@ -1,7 +1,10 @@
 # Netlify redirects for Angular SPA
 # This file ensures all routes are handled by Angular's router
 
-# Redirect all routes to index.html for client-side routing
-/*    /index.html   200
+# Specific redirects for common routes (optional aliases)
+/asistente    /asistente-virtual    301
+/panel        /panel-email          301
 
-# Optional: Redirect old URLs or specific redirects can go above this line
+# Main SPA redirect - MUST BE LAST
+# All other routes go to index.html for client-side routing
+/*    /index.html   200
