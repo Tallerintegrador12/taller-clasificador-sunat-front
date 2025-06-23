@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug localStorage - Credenciales Recordadas</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .info { background: #e3f2fd; border-color: #2196f3; }
+        .warning { background: #fff3e0; border-color: #ff9800; }
+        .success { background: #e8f5e8; border-color: #4caf50; }
+        button { padding: 10px 15px; margin: 5px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1976d2; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .danger { background: #ffebee; border-color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug localStorage - Credenciales Recordadas</h1>
+        
+        <div class="section info">
+            <h3>📱 Estado Actual del localStorage</h3>
+            <button onclick="checkLocalStorage()">🔄 Actualizar Estado</button>
+            <pre id="localStorageContent"></pre>
+        </div>
+        
+        <div class="section warning">
+            <h3>💾 Simular Guardar Credenciales</h3>
+            <input type="text" id="testUsername" placeholder="Usuario (ej: TESTUSER)" maxlength="15">
+            <input type="text" id="testRuc" placeholder="RUC (ej: 12345678901)" maxlength="11">
+            <br>
+            <button onclick="saveTestCredentials()">💾 Guardar Credenciales de Prueba</button>
+        </div>
+        
+        <div class="section success">
+            <h3>📂 Simular Cargar Credenciales</h3>
+            <button onclick="loadCredentials()">📂 Cargar Credenciales</button>
+            <pre id="loadedCredentials"></pre>
+        </div>
+        
+        <div class="section danger">
+            <h3>🗑️ Limpiar localStorage</h3>
+            <button onclick="clearUserData()">🗑️ Limpiar Solo userData</button>
+            <button onclick="clearRememberedCredentials()">🗑️ Limpiar Solo rememberedCredentials</button>
+            <button onclick="clearAll()">💣 Limpiar TODO</button>
+        </div>
+        
+        <div class="section info">
+            <h3>🧪 Probar Flujo Completo</h3>
+            <button onclick="simulateLogin()">🔑 Simular Login Completo</button>
+            <button onclick="simulateLogout()">🚪 Simular Logout</button>
+            <button onclick="simulateReturn()">🔄 Simular Regreso</button>
+        </div>
+        
+        <div class="section">
+            <h3>📋 Log de Actividades</h3>
+            <button onclick="clearLog()">🧹 Limpiar Log</button>
+            <pre id="activityLog"></pre>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const now = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('activityLog');
+            logElement.textContent += `[${now}] ${message}\n`;
+        }
+        
+        function checkLocalStorage() {
+            const userData = localStorage.getItem('userData');
+            const rememberedCredentials = localStorage.getItem('rememberedCredentials');
+            
+            const content = {
+                userData: userData ? JSON.parse(userData) : null,
+                rememberedCredentials: rememberedCredentials ? JSON.parse(rememberedCredentials) : null,
+                allKeys: Object.keys(localStorage),
+                totalItems: localStorage.length
+            };
+            
+            document.getElementById('localStorageContent').textContent = JSON.stringify(content, null, 2);
+            log('🔍 localStorage actualizado');
+        }
+        
+        function saveTestCredentials() {
+            const username = document.getElementById('testUsername').value.toUpperCase();
+            const ruc = document.getElementById('testRuc').value;
+            
+            if (!username || !ruc) {
+                alert('⚠️ Por favor, ingresa usuario y RUC');
+                return;
+            }
+            
+            if (!/^[A-Z]{7,15}$/.test(username)) {
+                alert('⚠️ Usuario debe tener 7-15 letras mayúsculas');
+                return;
+            }
+            
+            if (!/^\d{11}$/.test(ruc)) {
+                alert('⚠️ RUC debe tener exactamente 11 dígitos');
+                return;
+            }
+            
+            const credentials = { username, ruc };
+            localStorage.setItem('rememberedCredentials', JSON.stringify(credentials));
+            log(`💾 Guardadas credenciales: ${username} / ${ruc}`);
+            checkLocalStorage();
+        }
+        
+        function loadCredentials() {
+            const saved = localStorage.getItem('rememberedCredentials');
+            if (saved) {
+                const credentials = JSON.parse(saved);
+                document.getElementById('loadedCredentials').textContent = JSON.stringify(credentials, null, 2);
+                log(`📂 Cargadas credenciales: ${credentials.username} / ${credentials.ruc}`);
+            } else {
+                document.getElementById('loadedCredentials').textContent = 'No hay credenciales guardadas';
+                log('❌ No se encontraron credenciales');
+            }
+        }
+        
+        function clearUserData() {
+            localStorage.removeItem('userData');
+            log('🗑️ userData eliminado');
+            checkLocalStorage();
+        }
+        
+        function clearRememberedCredentials() {
+            localStorage.removeItem('rememberedCredentials');
+            log('🗑️ rememberedCredentials eliminado');
+            checkLocalStorage();
+        }
+        
+        function clearAll() {
+            localStorage.clear();
+            log('💣 localStorage completamente limpio');
+            checkLocalStorage();
+        }
+        
+        function simulateLogin() {
+            // Simular datos de usuario después del login
+            const userData = {
+                id: 1,
+                nombreUsuario: 'TESTUSER',
+                ruc: '12345678901',
+                loginTime: new Date().toISOString()
+            };
+            
+            // Simular credenciales recordadas
+            const rememberedCredentials = {
+                username: 'TESTUSER',
+                ruc: '12345678901'
+            };
+            
+            localStorage.setItem('userData', JSON.stringify(userData));
+            localStorage.setItem('rememberedCredentials', JSON.stringify(rememberedCredentials));
+            
+            log('🔑 Login simulado - usuario autenticado y credenciales guardadas');
+            checkLocalStorage();
+        }
+        
+        function simulateLogout() {
+            // Solo eliminar userData, mantener rememberedCredentials
+            localStorage.removeItem('userData');
+            log('🚪 Logout simulado - solo userData eliminado, credenciales recordadas mantenidas');
+            checkLocalStorage();
+        }
+        
+        function simulateReturn() {
+            // Simular regreso del usuario - verificar credenciales
+            const saved = localStorage.getItem('rememberedCredentials');
+            const authenticated = localStorage.getItem('userData');
+            
+            if (authenticated) {
+                log('✅ Usuario aún autenticado - redirección automática');
+            } else if (saved) {
+                const credentials = JSON.parse(saved);
+                log(`🔄 Usuario no autenticado pero credenciales encontradas: ${credentials.username} / ${credentials.ruc}`);
+            } else {
+                log('❌ Usuario no autenticado y sin credenciales - formulario limpio');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('activityLog').textContent = '';
+        }
+        
+        // Inicializar
+        window.onload = function() {
+            checkLocalStorage();
+            log('🚀 Debug page initialized');
+        };
+    </script>
+</body>
+</html>

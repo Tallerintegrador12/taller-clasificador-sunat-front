@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ComprobantesRheFeComponent } from './comprobantes-rhe-fe.component';
+import { ComprobantesRheFeComponent } from './comprobantes-rhe-fe.component.component';
 
 describe('ComprobantesRheFeComponent', () => {
   let component: ComprobantesRheFeComponent;

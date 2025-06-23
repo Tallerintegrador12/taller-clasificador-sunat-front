@@ -1,9 +1,53 @@
 /* You can add global styles to this file, and also import other style files */
 @import "tailwindcss";
 
+/* Importar estilos del dashboard profesional */
+@import "./styles-dashboard.css";
+
 /* styles.css - Estilos globales */
 
 @import 'tailwindcss/utilities';
+
+/* Custom label colors for SUNAT classifications */
+.bg-emerald-600 {
+  background-color: #059669 !important;
+}
+
+.bg-slate-600 {
+  background-color: #475569 !important;
+}
+
+.bg-teal-600 {
+  background-color: #0d9488 !important;
+}
+
+.bg-pink-600 {
+  background-color: #db2777 !important;
+}
+
+.bg-indigo-600 {
+  background-color: #4f46e5 !important;
+}
+
+.bg-orange-600 {
+  background-color: #ea580c !important;
+}
+
+/* Ensure text is always white on labels */
+.bg-emerald-600,
+.bg-slate-600,
+.bg-teal-600,
+.bg-pink-600,
+.bg-indigo-600,
+.bg-yellow-600,
+.bg-purple-600,
+.bg-orange-600,
+.bg-red-600,
+.bg-green-600,
+.bg-blue-600,
+.bg-gray-600 {
+  color: white !important;
+}
 
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {

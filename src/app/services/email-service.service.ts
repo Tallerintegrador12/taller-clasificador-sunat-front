@@ -1,104 +1,39 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, combineLatest, map } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { AuthService } from './auth.service';
 import {Email} from '../models/email';
 import {EmailFilters} from '../models/email-filters';
 import {EmailLabel} from '../models/email-label';
 import {EmailFolder} from '../models/email-folder';
 
+// Interfaz para mapear MensajeSunat del backend a Email del frontend
+interface MensajeSunat {
+  nu_codigo_mensaje: number;
+  vc_asunto: string;
+  vc_fecha_envio: string;
+  vc_fecha_publica: string;
+  vc_usuario_emisor: string;
+  nu_destacado: number;
+  nu_urgente: number;
+  nu_estado: number;
+  vc_numero_ruc: string;
+}
 
+// Interfaz para la respuesta del controlador
+interface RespuestaControlador<T> {
+  vcMensaje: string;
+  nuCodigo: number;
+  datos: T;
+  vcErrores?: string[];
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class EmailService {
-  private emailsSubject = new BehaviorSubject<Email[]>([
-    {
-      id: 1,
-      from: 'CEO@empresa.com',
-      fromName: 'Roberto Martinez',
-      subject: 'Reunión estratégica Q2 - Urgente',
-      preview: 'Necesitamos revisar los objetivos del segundo trimestre y definir las prioridades para el próximo período...',
-      content: 'Estimado equipo,\n\nEspero que se encuentren bien. Necesitamos programar una reunión estratégica para revisar los objetivos del segundo trimestre y definir las prioridades para el próximo período.\n\nPor favor, confirmen su disponibilidad para la próxima semana.\n\nSaludos,\nRoberto',
-      time: '10:30',
-      read: false,
-      starred: true,
-      priority: 'high',
-      labels: ['trabajo', 'urgente'],
-      hasAttachment: true,
-      folder: 'inbox',
-      avatar: 'RM',
-      attachments: [
-        { id: 1, name: 'agenda-q2.pdf', size: '2.3 MB', type: 'pdf' }
-      ]
-    },
-    {
-      id: 2,
-      from: 'marketing@newsletter.com',
-      fromName: 'Newsletter Marketing',
-      subject: 'Las mejores ofertas de la semana',
-      preview: 'Descubre increíbles descuentos en productos seleccionados. No te pierdas estas oportunidades únicas...',
-      content: 'Hola,\n\n¡No te pierdas nuestras ofertas especiales de esta semana! Tenemos descuentos de hasta el 50% en productos seleccionados.',
-      time: '09:15',
-      read: true,
-      starred: false,
-      priority: 'low',
-      labels: ['promociones'],
-      hasAttachment: false,
-      folder: 'inbox',
-      avatar: 'NM'
-    },
-    {
-      id: 3,
-      from: 'cliente@importante.com',
-      fromName: 'Ana García',
-      subject: 'Propuesta de proyecto - Revisión final',
-      preview: 'Hemos revisado la propuesta y tenemos algunos comentarios importantes que nos gustaría discutir...',
-      content: 'Estimado equipo,\n\nHemos revisado la propuesta del proyecto y en general nos parece muy bien estructurada. Tenemos algunos comentarios menores que nos gustaría discutir en una llamada.\n\n¿Podrían confirmar disponibilidad para esta semana?\n\nSaludos,\nAna García',
-      time: 'Ayer',
-      read: false,
-      starred: true,
-      priority: 'high',
-      labels: ['clientes', 'proyectos'],
-      hasAttachment: true,
-      folder: 'inbox',
-      avatar: 'AG',
-      attachments: [
-        { id: 2, name: 'propuesta-revisada.docx', size: '1.8 MB', type: 'docx' }
-      ]
-    },
-    {
-      id: 4,
-      from: 'equipo@desarrollo.com',
-      fromName: 'Equipo Desarrollo',
-      subject: 'Deploy exitoso - Versión 2.1.0',
-      preview: 'El deploy de la nueva versión se completó correctamente sin incidencias. Todas las funcionalidades están operativas...',
-      content: 'Equipo,\n\nLes informo que el deploy de la versión 2.1.0 se completó exitosamente a las 3:00 AM sin ninguna incidencia.\n\nTodas las nuevas funcionalidades están operativas y los tests automatizados pasaron correctamente.',
-      time: 'Ayer',
-      read: true,
-      starred: false,
-      priority: 'medium',
-      labels: ['desarrollo', 'sistemas'],
-      hasAttachment: false,
-      folder: 'inbox',
-      avatar: 'ED'
-    },
-    {
-      id: 5,
-      from: 'soporte@plataforma.com',
-      fromName: 'Soporte Técnico',
-      subject: 'Ticket #12345 - Resolución',
-      preview: 'Tu ticket ha sido resuelto. Hemos implementado la solución solicitada y verificado que funciona correctamente...',
-      content: 'Hola,\n\nTu ticket #12345 ha sido resuelto exitosamente. Hemos implementado la solución solicitada y verificado que todo funciona correctamente.\n\nSi tienes alguna pregunta adicional, no dudes en contactarnos.\n\nSaludos,\nEquipo de Soporte',
-      time: '2 días',
-      read: false,
-      starred: false,
-      priority: 'medium',
-      labels: ['soporte'],
-      hasAttachment: false,
-      folder: 'inbox',
-      avatar: 'ST'
-    }
-  ]);
+  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net/api/sunat';
+  private emailsSubject = new BehaviorSubject<Email[]>([]);
 
   private selectedFolderSubject = new BehaviorSubject<string>('inbox');
   private filtersSubject = new BehaviorSubject<EmailFilters>({
@@ -168,6 +103,106 @@ export class EmailService {
       });
     })
   );
+
+  constructor(private http: HttpClient, private authService: AuthService) {}
+
+  /**
+   * Carga los emails desde el backend usando el RUC del usuario autenticado
+   */
+  loadEmailsByRuc(): Observable<Email[]> {
+    const userRuc = this.authService.getUserRuc();
+    
+    if (!userRuc) {
+      console.error('No se encontró RUC del usuario autenticado');
+      return new Observable(observer => observer.next([]));
+    }
+
+    console.log('Cargando emails para RUC:', userRuc);
+    
+    return this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/mensajes`, {
+      params: { vc_numero_ruc: userRuc }
+    }).pipe(
+      map(response => {
+        console.log('Respuesta del backend:', response);
+        if (response.nuCodigo === 200 && response.datos) {
+          const emails = this.mapMensajeSunatToEmail(response.datos);
+          console.log('Emails mapeados:', emails);
+          return emails;
+        } else {
+          console.error('Error en la respuesta del backend:', response);
+          return [];
+        }
+      })
+    );
+  }
+
+  /**
+   * Mapea los mensajes de SUNAT a la estructura de Email del frontend
+   */
+  private mapMensajeSunatToEmail(mensajes: MensajeSunat[]): Email[] {
+    return mensajes.map((mensaje, index) => ({
+      id: mensaje.nu_codigo_mensaje,
+      from: 'sunat@sunat.gob.pe',
+      fromName: mensaje.vc_usuario_emisor || 'SUNAT',
+      subject: mensaje.vc_asunto,
+      preview: this.generatePreview(mensaje.vc_asunto),
+      content: `Mensaje de SUNAT: ${mensaje.vc_asunto}`,
+      time: this.formatTime(mensaje.vc_fecha_envio),
+      read: mensaje.nu_estado === 1,
+      starred: mensaje.nu_destacado === 1,
+      priority: mensaje.nu_urgente === 1 ? 'high' : 'medium',
+      labels: this.generateLabels(mensaje),
+      hasAttachment: false,
+      folder: 'inbox',
+      avatar: 'SU',
+      attachments: []
+    }));
+  }
+
+  /**
+   * Genera un preview del mensaje basado en el asunto
+   */
+  private generatePreview(asunto: string): string {
+    return asunto.length > 100 ? asunto.substring(0, 100) + '...' : asunto;
+  }
+
+  /**
+   * Formatea la fecha y hora para mostrar
+   */
+  private formatTime(fechaEnvio: string): string {
+    try {
+      const fecha = new Date(fechaEnvio);
+      return fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return 'Hora no válida';
+    }
+  }
+
+  /**
+   * Genera etiquetas basadas en las propiedades del mensaje
+   */
+  private generateLabels(mensaje: MensajeSunat): string[] {
+    const labels: string[] = [];
+    if (mensaje.nu_urgente === 1) labels.push('urgente');
+    if (mensaje.nu_destacado === 1) labels.push('destacado');
+    return labels;
+  }
+
+  /**
+   * Inicializa los emails obteniendo los datos del backend
+   */
+  initializeEmails(): void {
+    this.loadEmailsByRuc().subscribe({
+      next: (emails) => {
+        this.emailsSubject.next(emails);
+      },
+      error: (error) => {
+        console.error('Error al cargar emails:', error);
+        // Mantener emails vacíos en caso de error
+        this.emailsSubject.next([]);
+      }
+    });
+  }
 
   getFolders(): EmailFolder[] {
     const emails = this.emailsSubject.value;

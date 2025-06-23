@@ -9,6 +9,8 @@ import {AsyncPipe, NgClass, NgForOf, NgIf, NgSwitch, NgSwitchCase} from '@angula
 import {FormsModule} from '@angular/forms';
 import {Toast} from '../../models/Toast';
 import {EmailService} from '../../services/email-service.service';
+import {AuthService} from '../../services/auth.service';
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-email-client',
@@ -46,12 +48,27 @@ export class EmailClientComponent implements OnInit {
   toastCounter = 0;
   isLoading = false;
 
+  // Propiedades para información del usuario
+  currentUser: any = null;
 
-  constructor(private emailService: EmailService) {
+
+  constructor(private emailService: EmailService, private authService: AuthService, private router: Router) {
     this.filteredEmails$ = this.emailService.filteredEmails$;
   }
 
   ngOnInit(): void {
+    // Verificar autenticación
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    // Obtener información del usuario actual
+    this.currentUser = this.authService.getUserData();
+
+    // Cargar emails desde el backend
+    this.emailService.initializeEmails();
+    
     this.folders = this.emailService.getFolders();
     this.labels = this.emailService.getLabels();
   }
@@ -511,18 +528,6 @@ export class EmailClientComponent implements OnInit {
     this.showToastMessage('Vista compacta no implementada aún', 'info');
   }
 
-  refreshEmails(): void {
-    this.isLoading = true;
-    this.emailService.syncWithServer().then(() => {
-      this.refreshFolderCounts();
-      this.isLoading = false;
-      this.showToastMessage('Correos actualizados', 'success');
-    }).catch(() => {
-      this.isLoading = false;
-      this.showToastMessage('Error al actualizar correos', 'error');
-    });
-  }
-
 // Funciones para manejar toast notifications
   showToastMessage(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
     const toast: Toast = {
@@ -643,5 +648,33 @@ export class EmailClientComponent implements OnInit {
       this.selectedEmails.clear();
       this.refreshFolderCounts();
     }).unsubscribe();
+  }
+
+  /**
+   * Obtener información del usuario para mostrar en la interfaz
+   */
+  getUserInfo(): string {
+    const userData = this.authService.getUserData();
+    return userData ? `${userData.nombreUsuario} (${userData.ruc})` : 'Usuario no autenticado';
+  }
+
+  /**
+   * Método para realizar logout
+   */
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  /**
+   * Actualizar lista de emails
+   */
+  refreshEmails(): void {
+    this.isLoading = true;
+    this.emailService.initializeEmails();
+    // Simular delay para mostrar loading
+    setTimeout(() => {
+      this.isLoading = false;
+    }, 1000);
   }
 }

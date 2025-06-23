@@ -6,7 +6,7 @@
     <div class="p-4 border-b border-gray-200">
       <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
         <i class="fas fa-envelope text-blue-600"></i>
-        MailPro
+        SUNAT Mail
       </h1>
     </div>
 
@@ -58,6 +58,11 @@
     <div class="bg-white border-b border-gray-200 p-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4 flex-1">
+          <!-- User Info -->
+          <div class="text-sm text-gray-600">
+            Bienvenido, <span class="font-medium text-gray-900">{{getUserInfo()}}</span>
+          </div>
+          
           <!-- Search -->
           <div class="relative flex-1 max-w-md">
             <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -169,6 +174,14 @@
                 <i class="fas fa-cog"></i>
               </button>
             </div>
+            <!-- Botón de logout -->
+            <button
+              (click)="logout()"
+              class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+              title="Cerrar Sesión"
+            >
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
           </div>
         </div>
       </div>

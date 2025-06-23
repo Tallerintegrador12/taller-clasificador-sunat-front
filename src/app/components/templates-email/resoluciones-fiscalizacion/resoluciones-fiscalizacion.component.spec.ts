@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ResolucionesFiscalizacionComponent } from './resoluciones-fiscalizacion.component';
+import { ResolucionesFiscalizacionComponent } from './resoluciones-fiscalizacion.component.component';
 
 describe('ResolucionesFiscalizacionComponent', () => {
   let component: ResolucionesFiscalizacionComponent;

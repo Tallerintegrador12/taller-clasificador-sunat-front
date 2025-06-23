@@ -77,7 +77,7 @@ interface RespuestaControlador<T> {
   templateUrl: './email-panel.component.html',
   styleUrl: './email-panel.component.css'
 })
-export class EmailPanelComponent implements OnInit, OnDestroy{
+export class EmailPanelComponent implements OnInit, OnDestroy {
   @ViewChild('mailList') mailListRef!: ElementRef;
 
   // API Base URL
@@ -95,7 +95,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
   filteredMails: MensajeSunat[] = [];
   selectedMails: number[] = [];
   selectedMailDetail: MensajeSunat | null = null;
-  detalleEmail ?: Notificacion;
+  detalleEmail?: Notificacion;
 
   // UI State
   searchTerm: string = '';
@@ -106,20 +106,23 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
   isDragOver: boolean = false;
   mailListWidth: number = 600;
   isResizing: boolean = false;
+  mensajeJson: any = null;
 
   // Clasificaciones configuration
   clasificaciones = [
     { code: 'MUY IMPORTANTE', name: 'Muy Importantes', icon: '🔴', color: 'bg-red-500' },
     { code: 'IMPORTANTE', name: 'Importantes', icon: '🟡', color: 'bg-yellow-500' },
+    { code: 'INFORMATIVO', name: 'Informativos', icon: '🔵', color: 'bg-blue-500' },
     { code: 'RECURRENTE', name: 'Recurrentes', icon: '🟢', color: 'bg-green-500' }
   ];
-
+  
   // Folders configuration
   folders = [
     { code: 'inbox', name: 'Bandeja de entrada', icon: '📥', count: 3 },
+    { code: 'dashboard', name: 'Dashboard Analítico', icon: '📊', count: 0 },
     { code: 'starred', name: 'Destacados', icon: '⭐', count: 2 },
     /*{ code: 'sent', name: 'Enviados', icon: '📤', count: 0 },*/
-   /* { code: 'drafts', name: 'Borradores', icon: '📝', count: 3 },*/
+    /* { code: 'drafts', name: 'Borradores', icon: '📝', count: 3 },*/
     { code: 'archived', name: 'Archivados', icon: '📦', count: 0 },
     { code: 'trash', name: 'Papelera', icon: '🗑️', count: 0 }
   ];
@@ -130,7 +133,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     private router: Router,
     private servicioDetalle: NotificacionService,
     private authService: AuthService,
-  ) {}
+  ) { }
 
   ngOnInit() {
     // Suscribirse a los cambios del usuario autenticado
@@ -149,17 +152,23 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
       this.router.navigate(['/login']);
       return;
     }
-
+    
     // Cargar datos iniciales
     this.loadInitialData();
     this.loadLabels();
+
+    // Force reload labels after a short delay to ensure fresh data
+    setTimeout(() => {
+      this.refreshLabels();
+    }, 2000);
+
+    // Agregar listeners para eventos del dashboard
+    this.setupDashboardEventListeners();
   }
 
   ngOnDestroy(): void {
     this.userSubscription.unsubscribe();
   }
-
-
 
   /**
    * Método para cargar datos iniciales
@@ -170,6 +179,9 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
       console.log(`Bienvenido ${userData.nombreUsuario} (RUC: ${userData.ruc})`);
       // Cargar datos específicos del usuario
       this.loadMails();
+
+      // Verificar si viene del dashboard con filtros
+      this.verificarFiltrosDashboard();
     }
   }
 
@@ -182,18 +194,66 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
   }
 
   /**
+   * Método para navegar al Asistente Virtual Contable
+   */
+  abrirAsistenteVirtual(): void {
+    this.router.navigate(['/asistente-virtual']);
+  }
+
+  /**
    * Obtener información del usuario para mostrar en la interfaz
    */
   getUserInfo(): string {
     const userData = this.authService.getUserData();
-    return userData ? `${userData.nombreUsuario} (${userData.ruc})` : 'Usuario no autenticado';
+    console.log('=== DEBUG getUserInfo COMPLETO ===');
+    console.log('userData completo:', JSON.stringify(userData, null, 2));
+
+    if (userData) {
+      console.log('userData.nombreUsuario:', userData.nombreUsuario);
+      console.log('userData.ruc:', userData.ruc);
+      console.log('Propiedades disponibles:', Object.keys(userData));
+
+      // Revisar cada propiedad específicamente
+      Object.keys(userData).forEach(key => {
+        console.log(`Propiedad "${key}":`, (userData as any)[key]);
+      });
+    }
+
+    // Intentar con diferentes propiedades posibles (incluir nombre_usuario para compatibilidad)
+    const userDataAny = userData as any;
+    const nombre = userData?.nombreUsuario || userDataAny?.nombre_usuario || userDataAny?.username || userDataAny?.nombre || 'Usuario';
+    console.log('Nombre final a mostrar:', nombre);
+
+    return userData ? `${nombre} (${userData.ruc})` : 'Usuario no autenticado';
   }
 
+  /**
+   * Mapea el código de etiqueta a la clasificación correspondiente
+   */
+  private mapearClasificacion(codigoEtiqueta: string): 'MUY IMPORTANTE' | 'IMPORTANTE' | 'INFORMATIVO' | 'RECURRENTE' {
+    switch (codigoEtiqueta) {
+      case '10':
+        return 'MUY IMPORTANTE';
+      case '11':
+        return 'IMPORTANTE';
+      case '13':
+        return 'INFORMATIVO';
+      case '14':
+        return 'RECURRENTE';
+      default:
+        return 'RECURRENTE'; // Por defecto
+    }
+  }
 
   /**
-   * Ejemplo de método para obtener datos con el RUC del usuario
+   * Aplica la clasificación a todos los mensajes basándose en su código de etiqueta
    */
-
+  private aplicarClasificaciones(mensajes: MensajeSunat[]): MensajeSunat[] {
+    return mensajes.map(mensaje => ({
+      ...mensaje,
+      clasificacion: this.mapearClasificacion(mensaje.vc_codigo_etiqueta)
+    }));
+  }
 
   loadMails() {
     console.log('=== INICIANDO loadMails() ===');
@@ -202,7 +262,8 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     if (!userRuc) {
       console.error('Usuario no autenticado');
       this.router.navigate(['/login']);
-      return;    }
+      return;
+    }
 
     console.log('RUC del usuario:', userRuc);
     const params = new HttpParams().set('vc_numero_ruc', userRuc); // Usa query param
@@ -211,29 +272,44 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     this.isLoading = true;
     console.log('URL de la API:', `${this.apiUrl}/sunat/mensajes`);
     
-    this.http.get<RespuestaControlador<MensajeSunat[]>>(`${this.apiUrl}/sunat/mensajes`, { params })
+    this.http.get(`${this.apiUrl}/sunat/mensajes`, { params })
       .subscribe({
-        next: (response) => {
-          console.log('=== RESPUESTA EXITOSA ===');
-          console.log('Respuesta del servidor:', response);
-          console.log('Código de respuesta:', response.nu_codigo);
-          console.log('Mensaje:', response.vc_mensaje);
-          console.log('Datos (array):', response.datos);
-          console.log('Cantidad de mensajes:', response.datos?.length || 0);
-          
-          this.mensajes = response.datos || [];
+        next: (response: any) => {
+          console.log('=== RESPUESTA CRUDA DEL SERVIDOR ===');
+          console.log('Respuesta completa:', response);
+          console.log('Tipo de respuesta:', typeof response);
+          console.log('Propiedades de la respuesta:', Object.keys(response));
+
+          // Intentar acceder a los datos de diferentes maneras
+          let mensajes = [];
+          if (response.datos) {
+            mensajes = response.datos;
+            console.log('Usando response.datos');
+          } else if (Array.isArray(response)) {
+            mensajes = response;
+            console.log('Response es un array directo');
+          } else {
+            console.error('No se pudo encontrar los mensajes en la respuesta');
+          }
+
+          console.log('Mensajes extraídos:', mensajes);
+          console.log('Cantidad de mensajes:', mensajes?.length || 0);
+
+          // Aplicar clasificaciones a los mensajes
+          this.mensajes = this.aplicarClasificaciones(mensajes || []);
           console.log('Mensajes asignados a this.mensajes:', this.mensajes.length);
-          
+
           if (this.mensajes.length > 0) {
             console.log('Primer mensaje:', this.mensajes[0]);
-            console.log('Clasificación del primer mensaje:', this.mensajes[0].clasificacion);
           }
-          
+
           this.filterMails();
           this.isLoading = false;
-          console.log('Datos obtenidos:', response);
           this.authService.updateLastActivity();
-        },        error: (error) => {
+
+          this.verificarSeleccionCorreo();
+        },
+        error: (error) => {
           console.error('=== ERROR EN loadMails() ===');
           console.error('Error loading mails:', error);
           console.error('Status:', error.status);
@@ -247,17 +323,22 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
       });
   }
 
-
   loadLabels() {
     this.http.get<RespuestaControlador<Etiqueta[]>>(`${this.apiUrl}/etiquetas`)
       .subscribe({
         next: (response) => {
           this.etiquetas = response.datos || [];
+          console.log('Etiquetas cargadas:', this.etiquetas);
         },
         error: (error) => {
           console.error('Error loading labels:', error);
         }
       });
+  }
+
+  // Método para refrescar etiquetas manualmente
+  refreshLabels() {
+    this.loadLabels();
   }
 
   refreshMails() {
@@ -285,8 +366,8 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     this.selectedMails.forEach(mailId => {
       this.updateMailProperty(mailId, 'leido', 1).subscribe({
         next: () => {
-          const mail = this.mensajes.find(m => m.nu_codigo_mensaje=== mailId);
-          if (mail) mail.nu_leido= 1;
+          const mail = this.mensajes.find(m => m.nu_codigo_mensaje === mailId);
+          if (mail) mail.nu_leido = 1;
           this.filterMails();
         }
       });
@@ -382,7 +463,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
   }
 
   toggleStarred(mail: MensajeSunat) {
-    const newValue = mail.nu_destacado=== 1 ? 0 : 1;
+    const newValue = mail.nu_destacado === 1 ? 0 : 1;
     this.updateMailProperty(mail.nu_codigo_mensaje, 'destacado', newValue).subscribe({
       next: () => {
         mail.nu_destacado = newValue;
@@ -393,6 +474,12 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
 
   // UI Methods
   selectFolder(folderCode: string) {
+    // Si selecciona dashboard, navegar al componente dashboard
+    if (folderCode === 'dashboard') {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+
     this.selectedFolder = folderCode;
     this.selectedLabel = '';
     this.selectedClasificacion = ''; // Reset clasificación
@@ -429,7 +516,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     if (!mail.nu_leido) {
       this.updateMailProperty(mail.nu_codigo_mensaje, 'leido', 1).subscribe({
         next: () => {
-          mail.nu_leido= 1;
+          mail.nu_leido = 1;
           this.filterMails();
         }
       });
@@ -440,7 +527,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     if (coMensaje) {
       this.servicioDetalle.obtenerNotificacion(coMensaje).subscribe({
         next: (data) => {
-          this.detalleEmail= data
+          this.detalleEmail = data
 
           try {
             this.datos = JSON.parse(data.msj_mensaje);
@@ -459,19 +546,19 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
 
   getTemplateType(data: any, labelCode: string): string {
 
-    if(labelCode === '14'){
+    if (labelCode === '14') {
       return 'resoluciones-fiscalizacion'
     }
 
-    if(labelCode === '13'){
+    if (labelCode === '13') {
       return 'resoluciones-contenciosas'
     }
 
-    if(labelCode === '11'){
+    if (labelCode === '11') {
       return 'resoluciones-cobranza'
     }
 
-    if(labelCode === '10'){
+    if (labelCode === '10') {
       return 'valores'
     }
 
@@ -487,7 +574,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
       return 'constancia-notificacion';
     }
 
-    if('horaDesc' in data){
+    if ('horaDesc' in data) {
       return 'comprobantes-rhe-fe';
     }
 
@@ -496,16 +583,13 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
 
   decode(text: string): string {
     return decodeURIComponent(text
-      .replace(/ï¿½/g,'ó')
+      .replace(/ï¿½/g, 'ó')
       .replace(/%26%23243;/g, 'ó')
       .replace(/%26%23176;/g, '°')
       .replace(/%26%23233;/g, 'é')
       .replace(/&oacute;/g, 'ó')
     )
   }
-
-
-
 
   toggleMailSelection(mailId: number) {
     const index = this.selectedMails.indexOf(mailId);
@@ -726,8 +810,9 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
   }
 
   getLabelColor(labelCode: string): string {
-    console.log("label code: "+labelCode);
+    console.log("label code: " + labelCode);
     const label = this.etiquetas.find(e => e.vc_codigo === labelCode);
+    console.log("label found:", label);
     console.log("label color", label?.vc_color);
     return label?.vc_color || 'bg-cyan-500';
   }
@@ -752,15 +837,19 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     document.body.removeChild(link);
   }
 
-  mensajeJson: any = null;
-
   // Métodos para filtrar por clasificación
   getCorreosMuyImportantes(): MensajeSunat[] {
     return this.filteredMails.filter(m => m.clasificacion === 'MUY IMPORTANTE');
   }
+
   getCorreosImportantes(): MensajeSunat[] {
     return this.filteredMails.filter(m => m.clasificacion === 'IMPORTANTE');
   }
+
+  getCorreosInformativos(): MensajeSunat[] {
+    return this.filteredMails.filter(m => m.clasificacion === 'INFORMATIVO');
+  }
+
   getCorreosRecurrentes(): MensajeSunat[] {
     return this.filteredMails.filter(m => m.clasificacion === 'RECURRENTE');
   }
@@ -793,7 +882,7 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     console.log('Usuario autenticado:', this.authService.isAuthenticated());
     console.log('RUC del usuario:', this.authService.getUserRuc());
     console.log('User Data:', this.authService.getUserData());
-    
+
     const userRuc = this.authService.getUserRuc();
     if (!userRuc) {
       console.error('No hay RUC disponible');
@@ -832,4 +921,548 @@ export class EmailPanelComponent implements OnInit, OnDestroy{
     console.log('LocalStorage userData:', localStorage.getItem('userData'));
     console.log('=== FIN DEBUG AUTENTICACIÓN ===');
   }
+
+  // Método para verificar si hay un correo específico para seleccionar desde el dashboard
+  private verificarSeleccionCorreo(): void {
+    const correoSeleccionadoId = localStorage.getItem('correoSeleccionado');
+
+    if (correoSeleccionadoId) {
+      console.log('🔍 Buscando correo con ID:', correoSeleccionadoId);
+      console.log('📋 Total mensajes disponibles:', this.mensajes.length);
+
+      // Buscar el correo en la lista actual
+      const correoEncontrado = this.mensajes.find(mensaje =>
+        mensaje.nu_codigo_mensaje.toString() === correoSeleccionadoId
+      );
+
+      if (correoEncontrado) {
+        console.log('✅ Correo encontrado:', correoEncontrado);
+        // Seleccionar el correo y limpiar selecciones previas
+        this.selectedMails = [correoEncontrado.nu_codigo_mensaje];
+        this.selectedMailDetail = correoEncontrado;
+
+        // Simular clic para mostrar detalles usando el método existente
+        const mockEvent = new MouseEvent('click');
+        this.selectMail(correoEncontrado, mockEvent);
+
+        // Marcar como leído si no lo está
+        if (!correoEncontrado.nu_leido) {
+          this.updateMailProperty(correoEncontrado.nu_codigo_mensaje, 'leido', 1).subscribe({
+            next: () => {
+              correoEncontrado.nu_leido = 1;
+              console.log('📧 Correo marcado como leído');
+            },
+            error: (error) => console.error('❌ Error al marcar como leído:', error)
+          });
+        }
+
+        console.log('🎯 Correo seleccionado automáticamente');
+      } else {
+        console.log('❌ Correo no encontrado en la lista actual');
+        console.log('🔍 Buscando por asunto como fallback...');
+
+        // Fallback: buscar por asunto
+        const correoAsunto = localStorage.getItem('correoAsunto');
+        if (correoAsunto) {
+          const correosPorAsunto = this.mensajes.filter(mensaje =>
+            mensaje.vc_asunto.includes(correoAsunto.substring(0, 20))
+          );
+          
+          if (correosPorAsunto.length > 0) {
+            const correo = correosPorAsunto[0];
+            this.selectedMails = [correo.nu_codigo_mensaje];
+            this.selectedMailDetail = correo;
+            const mockEvent = new MouseEvent('click');
+            this.selectMail(correo, mockEvent);
+            console.log('🎯 Correo encontrado por asunto');
+          }
+        }
+      }
+
+      // Limpiar el localStorage después de usar
+      localStorage.removeItem('correoSeleccionado');
+      localStorage.removeItem('correoAsunto');
+      localStorage.removeItem('correoFechaEnvio');
+    }
+  }
+
+  // Método para verificar y aplicar filtros desde el dashboard
+  private verificarFiltrosDashboard(): void {
+    const origenDashboard = localStorage.getItem('origenDashboard');
+
+    if (origenDashboard === 'true') {
+      console.log('🎯 Aplicando filtros desde dashboard');
+
+      // Verificar filtro por clasificación
+      const clasificacionPanel = localStorage.getItem('clasificacionPanel');
+      if (clasificacionPanel) {
+        console.log('📋 Aplicando filtro de clasificación:', clasificacionPanel);
+        setTimeout(() => {
+          this.selectClasificacion(clasificacionPanel);
+        }, 2000);
+      }
+
+      // Verificar filtro por fiscalización
+      const buscarFiscalizacion = localStorage.getItem('buscarFiscalizacion');
+      if (buscarFiscalizacion === 'true') {
+        console.log('🔍 Aplicando filtro de fiscalizaciones');
+        setTimeout(() => {
+          this.aplicarFiltroPorContenido('fiscalizacion');
+        }, 2000);
+      }
+
+      // Verificar filtro por multas
+      const buscarMulta = localStorage.getItem('buscarMulta');
+      if (buscarMulta === 'true') {
+        console.log('💰 Aplicando filtro de multas');
+        setTimeout(() => {
+          this.aplicarFiltroPorContenido('multa');
+        }, 2000);
+      }
+
+      // Limpiar localStorage después de usar
+      localStorage.removeItem('origenDashboard');
+      localStorage.removeItem('filtroClasificacion');
+      localStorage.removeItem('clasificacionPanel');
+      localStorage.removeItem('buscarFiscalizacion');
+      localStorage.removeItem('buscarMulta');
+    }
+  }
+
+  // Método para aplicar filtros por contenido del asunto
+  private aplicarFiltroPorContenido(tipo: string): void {
+    console.log('🔍 Aplicando filtro por contenido:', tipo);
+
+    let terminosBusqueda: string[] = [];
+
+    switch (tipo) {
+      case 'fiscalizacion':
+        terminosBusqueda = ['fiscalizacion', 'fiscalización', 'auditoria', 'auditoría', 'esquela', 'citación'];
+        break;
+      case 'multa':
+        terminosBusqueda = ['multa', 'valor', 'cobro', 'cobranza', 'embargo', 'coactiva'];
+        break;
+    }
+
+    // Filtrar mensajes que contengan los términos de búsqueda
+    this.filteredMails = this.mensajes.filter(mensaje => {
+      const asuntoLower = mensaje.vc_asunto.toLowerCase();
+      return terminosBusqueda.some(termino => asuntoLower.includes(termino));
+    });
+
+    console.log(`✅ Filtro aplicado: ${this.filteredMails.length} correos encontrados de tipo ${tipo}`);
+
+    // Resetear selecciones
+    this.selectedFolder = '';
+    this.selectedClasificacion = '';
+    this.selectedMails = [];
+  }
+
+  /**
+   * Configurar listeners para eventos del dashboard
+   */
+  private setupDashboardEventListeners(): void {
+    // Listener para seleccionar correo específico
+    window.addEventListener('seleccionarCorreoEspecifico', (event: any) => {
+      console.log('📨 Evento recibido: seleccionarCorreoEspecifico', event.detail);
+      const { codigoMensaje, asunto, fechaEnvio } = event.detail;
+
+      setTimeout(() => {
+        this.seleccionarCorreoPorCodigo(codigoMensaje, asunto, fechaEnvio);
+      }, 500);
+    });
+
+    // Listener para aplicar filtros de clasificación
+    window.addEventListener('aplicarFiltroClasificacion', (event: any) => {
+      console.log('🏷️ Evento recibido: aplicarFiltroClasificacion', event.detail);
+      const { clasificacion, tipo } = event.detail;
+
+      setTimeout(() => {
+        if (clasificacion) {
+          this.selectClasificacion(clasificacion);
+        } else {
+          this.aplicarFiltroPorContenido(tipo);
+        }
+      }, 500);
+    });
+
+    console.log('✅ Listeners del dashboard configurados');
+  }
+
+  /**
+   * Seleccionar correo por código
+   */
+  private seleccionarCorreoPorCodigo(codigoMensaje: number, asunto?: string, fechaEnvio?: string): void {
+    console.log('🎯 Intentando seleccionar correo:', { codigoMensaje, asunto, fechaEnvio });
+
+    // Buscar el correo en la lista filtrada
+    let correoEncontrado = this.filteredMails.find(correo => correo.nu_codigo_mensaje === codigoMensaje);
+
+    if (!correoEncontrado && asunto) {
+      // Si no se encuentra por código, buscar por asunto
+      correoEncontrado = this.filteredMails.find(correo => correo.vc_asunto === asunto);
+    }
+
+    if (!correoEncontrado && fechaEnvio) {
+      // Si no se encuentra, buscar por fecha y asunto
+      correoEncontrado = this.filteredMails.find(correo =>
+        correo.vc_fecha_envio === fechaEnvio &&
+        (asunto ? correo.vc_asunto.includes(asunto.substring(0, 20)) : true)
+      );
+    }
+
+    if (correoEncontrado) {
+      console.log('✅ Correo encontrado, seleccionando:', correoEncontrado.vc_asunto);
+      this.selectedMailDetail = correoEncontrado;
+      this.selectedMails = [correoEncontrado.nu_codigo_mensaje];
+
+      // Marcar como leído si no lo estaba
+      if (correoEncontrado.nu_leido === 0) {
+        correoEncontrado.nu_leido = 1;
+        this.markAsRead();
+      }
+
+      // Hacer scroll al correo seleccionado
+      setTimeout(() => {
+        const elemento = document.getElementById(`mail-${correoEncontrado!.nu_codigo_mensaje}`);
+        if (elemento) {
+          elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          elemento.classList.add('highlight-mail');
+          setTimeout(() => {
+            elemento.classList.remove('highlight-mail');
+          }, 3000);
+        }
+      }, 100);
+    } else {
+      console.warn('⚠️ Correo no encontrado en la lista actual');
+
+      // Si no se encuentra, intentar recargar los correos y buscar de nuevo
+      this.loadMails();
+      setTimeout(() => {
+        this.seleccionarCorreoPorCodigo(codigoMensaje, asunto, fechaEnvio);
+      }, 2000);
+    }
+  }
+
+  /**
+   * Método para descargar archivos adjuntos
+   */
+  descargarAdjunto(adjunto: any): void {
+    if (!adjunto || !adjunto.url) {
+      console.error('No se puede descargar el adjunto');
+      return;
+    }
+
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a');
+    link.href = adjunto.url;
+    link.download = adjunto.nombre || 'archivo_adjunto';
+    link.target = '_blank';
+    
+    // Simular clic para iniciar descarga
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  /**
+   * Método para reenviar un correo
+   */
+  reenviarCorreo(mail: MensajeSunat): void {
+    console.log('Reenviando correo:', mail.vc_asunto);
+    // Aquí implementarías la lógica para reenviar el correo
+    // Por ejemplo, abrir un modal de composición con el contenido del correo
+  }
+
+  /**
+   * Método para responder un correo
+   */
+  responderCorreo(mail: MensajeSunat): void {
+    console.log('Respondiendo correo:', mail.vc_asunto);
+    // Aquí implementarías la lógica para responder el correo
+  }
+
+  /**
+   * Método para obtener el ícono de clasificación
+   */
+  getClasificacionIcon(clasificacion: string): string {
+    const clasificacionObj = this.clasificaciones.find(c => c.code === clasificacion);
+    return clasificacionObj ? clasificacionObj.icon : '📧';
+  }
+
+  /**
+   * Método para obtener el color de clasificación
+   */
+  getClasificacionColor(clasificacion: string): string {
+    const clasificacionObj = this.clasificaciones.find(c => c.code === clasificacion);
+    return clasificacionObj ? clasificacionObj.color : 'bg-gray-500';
+  }
+
+  /**
+   * Método para verificar si hay correos no leídos
+   */
+  tieneCorreosNoLeidos(): boolean {
+    return this.mensajes.some(m => m.nu_leido === 0 && m.nu_estado === 1);
+  }
+
+  /**
+   * Método para obtener cantidad de correos no leídos
+   */
+  getCantidadNoLeidos(): number {
+    return this.mensajes.filter(m => m.nu_leido === 0 && m.nu_estado === 1).length;
+  }
+
+  /**
+   * Método para marcar todos como leídos
+   */
+  marcarTodosComoLeidos(): void {
+    const noLeidos = this.mensajes.filter(m => m.nu_leido === 0);
+    
+    noLeidos.forEach(mail => {
+      this.updateMailProperty(mail.nu_codigo_mensaje, 'leido', 1).subscribe({
+        next: () => {
+          mail.nu_leido = 1;
+        },
+        error: (error) => {
+          console.error('Error al marcar como leído:', error);
+        }
+      });
+    });
+    
+    this.filterMails();
+  }
+
+  /**
+   * Método para exportar correos seleccionados
+   */
+  exportarCorreosSeleccionados(): void {
+    if (this.selectedMails.length === 0) {
+      console.warn('No hay correos seleccionados para exportar');
+      return;
+    }
+
+    const correosParaExportar = this.mensajes.filter(m => 
+      this.selectedMails.includes(m.nu_codigo_mensaje)
+    );
+
+    const dataExport = correosParaExportar.map(correo => ({
+      codigo: correo.nu_codigo_mensaje,
+      asunto: correo.vc_asunto,
+      emisor: correo.vc_usuario_emisor,
+      fecha_envio: correo.vc_fecha_envio,
+      clasificacion: correo.clasificacion,
+      etiqueta: this.getLabelName(correo.vc_codigo_etiqueta),
+      leido: correo.nu_leido === 1 ? 'Sí' : 'No',
+      destacado: correo.nu_destacado === 1 ? 'Sí' : 'No'
+    }));
+
+    // Convertir a CSV
+    const csv = this.convertToCSV(dataExport);
+    
+    // Descargar archivo
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `correos_exportados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  /**
+   * Convertir datos a formato CSV
+   */
+  private convertToCSV(data: any[]): string {
+    if (data.length === 0) return '';
+
+    const headers = Object.keys(data[0]);
+    const csvHeaders = headers.join(',');
+    
+    const csvRows = data.map(row => {
+      return headers.map(header => {
+        const value = row[header];
+        // Escapar comillas y envolver en comillas si contiene comas
+        return typeof value === 'string' && value.includes(',') 
+          ? `"${value.replace(/"/g, '""')}"` 
+          : value;
+      }).join(',');
+    });
+
+    return [csvHeaders, ...csvRows].join('\n');
+  }
+
+  /**
+   * Método para buscar correos por rango de fechas
+   */
+  buscarPorFechas(fechaInicio: Date, fechaFin: Date): void {
+    this.filteredMails = this.mensajes.filter(mail => {
+      const fechaMail = new Date(mail.vc_fecha_envio);
+      return fechaMail >= fechaInicio && fechaMail <= fechaFin;
+    });
+    
+    console.log(`Búsqueda por fechas: ${this.filteredMails.length} correos encontrados`);
+  }
+
+  /**
+   * Método para obtener estadísticas de correos
+   */
+  obtenerEstadisticas(): any {
+    const total = this.mensajes.length;
+    const noLeidos = this.mensajes.filter(m => m.nu_leido === 0).length;
+    const destacados = this.mensajes.filter(m => m.nu_destacado === 1).length;
+    const archivados = this.mensajes.filter(m => m.nu_archivado === 1).length;
+    
+    const porClasificacion = {
+      muyImportantes: this.mensajes.filter(m => m.clasificacion === 'MUY IMPORTANTE').length,
+      importantes: this.mensajes.filter(m => m.clasificacion === 'IMPORTANTE').length,
+      informativos: this.mensajes.filter(m => m.clasificacion === 'INFORMATIVO').length,
+      recurrentes: this.mensajes.filter(m => m.clasificacion === 'RECURRENTE').length
+    };
+
+    return {
+      total,
+      noLeidos,
+      destacados,
+      archivados,
+      porClasificacion,
+      porcentajeLeidos: total > 0 ? ((total - noLeidos) / total * 100).toFixed(2) : 0
+    };
+  }
+
+  /**
+   * Método para sincronizar con SUNAT
+   */
+  sincronizarConSunat(): void {
+    console.log('Iniciando sincronización con SUNAT...');
+    this.isLoading = true;
+
+    this.http.post<RespuestaControlador<any>>(`${this.apiUrl}/sunat/sincronizar-completo`, {
+      ruc: this.authService.getUserRuc()
+    }).subscribe({
+      next: (response) => {
+        console.log('Sincronización completada:', response.vc_mensaje);
+        // Recargar los mensajes después de sincronizar
+        this.loadMails();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error en sincronización:', error);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  /**
+   * Método para limpiar filtros y búsquedas
+   */
+  limpiarFiltros(): void {
+    this.searchTerm = '';
+    this.selectedFolder = 'inbox';
+    this.selectedLabel = '';
+    this.selectedClasificacion = '';
+    this.selectedMails = [];
+    this.filterMails();
+  }
+
+  /**
+   * Método para verificar si el correo tiene archivos adjuntos
+   */
+  tieneAdjuntos(mail: MensajeSunat): boolean {
+    return mail.nu_cantidad_archivos > 0;
+  }
+
+  /**
+   * Método para obtener preview del contenido del correo
+   */
+  getMailPreview(mail: MensajeSunat): string {
+    // Aquí podrías implementar lógica para obtener un preview del contenido
+    // Por ahora retornamos el asunto truncado
+    const maxLength = 100;
+    return mail.vc_asunto.length > maxLength 
+      ? mail.vc_asunto.substring(0, maxLength) + '...' 
+      : mail.vc_asunto;
+  }
+
+  /**
+   * Método para gestionar notificaciones
+   */
+  toggleNotificaciones(): void {
+    // Implementar lógica para activar/desactivar notificaciones
+    console.log('Toggle notificaciones');
+  }
+
+  /**
+   * Método para cambiar vista de la interfaz
+   */
+  cambiarVista(vista: 'lista' | 'grid' | 'compacta'): void {
+    // Implementar cambio de vista
+    console.log('Cambiando vista a:', vista);
+  }
+
+  /**
+   * Método auxiliar para validar RUC
+   */
+  private validarRUC(ruc: string): boolean {
+    if (!ruc || ruc.length !== 11) return false;
+    
+    // Validación básica de RUC peruano
+    const primerDigito = parseInt(ruc.charAt(0));
+    return primerDigito === 1 || primerDigito === 2;
+  }
+
+  /**
+   * Método para obtener configuración del usuario
+   */
+  obtenerConfiguracionUsuario(): any {
+    // Aquí podrías obtener configuraciones personalizadas del usuario
+    return {
+      tema: 'default',
+      notificaciones: true,
+      vista: 'lista',
+      itemsPorPagina: 50
+    };
+  }
+
+  /**
+   * Método de limpieza al destruir el componente
+   */
+  private cleanup(): void {
+    // Limpiar event listeners
+    window.removeEventListener('seleccionarCorreoEspecifico', this.handleSeleccionarCorreo);
+    window.removeEventListener('aplicarFiltroClasificacion', this.handleAplicarFiltro);
+    
+    // Limpiar subscriptions
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
+  }
+
+  /**
+   * Handlers para eventos (para poder removerlos correctamente)
+   */
+  private handleSeleccionarCorreo = (event: any) => {
+    console.log('📨 Evento recibido: seleccionarCorreoEspecifico', event.detail);
+    const { codigoMensaje, asunto, fechaEnvio } = event.detail;
+    
+    setTimeout(() => {
+      this.seleccionarCorreoPorCodigo(codigoMensaje, asunto, fechaEnvio);
+    }, 500);
+  };
+
+  private handleAplicarFiltro = (event: any) => {
+    console.log('🏷️ Evento recibido: aplicarFiltroClasificacion', event.detail);
+    const { clasificacion, tipo } = event.detail;
+    
+    setTimeout(() => {
+      if (clasificacion) {
+        this.selectClasificacion(clasificacion);
+      } else {
+        this.aplicarFiltroPorContenido(tipo);
+      }
+    }, 500);
+  };
 }

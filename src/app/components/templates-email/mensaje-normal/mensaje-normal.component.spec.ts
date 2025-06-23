@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MensajeNormalComponent } from './mensaje-normal.component';
+import { MensajeNormalComponent } from './mensaje-normal.component.component';
 
 describe('MensajeNormalComponent', () => {
   let component: MensajeNormalComponent;

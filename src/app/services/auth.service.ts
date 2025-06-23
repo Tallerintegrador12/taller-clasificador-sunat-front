@@ -1,18 +1,33 @@
 import { Injectable } from '@angular/core';
-import {Usuario, UsuarioAutenticado} from '../models/usuario';
-import {HttpClient} from '@angular/common/http';
-import {Router} from '@angular/router';
-import {BehaviorSubject, map, Observable} from 'rxjs';
+import { Usuario, UsuarioAutenticado } from '../models/usuario';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { BehaviorSubject, map, Observable, tap } from 'rxjs';
+import { NotificacionService } from './notificacion.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly STORAGE_KEY = 'userData';
   private currentUserSubject = new BehaviorSubject<UsuarioAutenticado | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
+  private apiUrl = 'https://sunatapi-arcehmesgqb2f8en.brazilsouth-01.azurewebsites.net/api/auth'; // URL de tu backend
 
-  constructor() {
+  constructor(private http: HttpClient, private router: Router, private notificacionService: NotificacionService) {
     // Cargar usuario desde localStorage al inicializar el servicio
     this.loadUserFromStorage();
+  }
+
+  register(user: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/register`, user);
+  }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<UsuarioAutenticado>(`${this.apiUrl}/login`, credentials).pipe(
+      tap(user => {
+        this.saveUserData(user);
+        this.router.navigate(['/panel-email']); // Volver a la interfaz original
+      })
+    );
   }
 
   /**
@@ -84,6 +99,10 @@ export class AuthService {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       this.currentUserSubject.next(null);
+      
+      // Limpiar todas las notificaciones pendientes y cancelar operaciones HTTP al hacer logout
+      this.notificacionService.limpiarTodo();
+      console.log('🧹 Notificaciones y operaciones pendientes limpiadas durante logout');
     } catch (error) {
       console.error('Error al eliminar datos del usuario:', error);
     }
