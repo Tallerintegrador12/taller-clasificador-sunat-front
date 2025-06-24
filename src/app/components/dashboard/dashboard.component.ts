@@ -969,70 +969,153 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'estable': return 'Estable';
       default: return 'Sin Datos';
     }
-  }
-
-  // Métodos para procesar datos de Gemini AI
+  }  // Métodos para procesar datos de Gemini AI - MEJORADOS PARA MANEJAR FALLBACK
   getScoreFromAnalysis(): number {
-    if (!this.analisisPredictivo?.candidates?.[0]?.content?.parts?.[0]?.text) return 0;
+    console.log('🔍 Análisis predictivo completo:', this.analisisPredictivo);
     
-    try {
-      const content = this.analisisPredictivo.candidates[0].content.parts[0].text;
-      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[1]);
-        return data.scoreCompliance || 0;
-      }
-    } catch (e) {
-      console.error('Error al extraer score:', e);
+    // Opción 1: Score directo del análisis (fallback)
+    if (this.analisisPredictivo?.scoreCompliance) {
+      console.log('✅ Score desde fallback:', this.analisisPredictivo.scoreCompliance);
+      return this.analisisPredictivo.scoreCompliance;
     }
-    return 0;
-  }
-
-  getNivelRiesgoFromAnalysis(): string {
-    if (!this.analisisPredictivo?.candidates?.[0]?.content?.parts?.[0]?.text) return 'SIN DATOS';
     
-    try {
-      const content = this.analisisPredictivo.candidates[0].content.parts[0].text;
-      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[1]);
-        return data.nivelRiesgo || 'MEDIO';
+    // Opción 2: Score desde Gemini AI
+    if (this.analisisPredictivo?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      try {
+        const content = this.analisisPredictivo.candidates[0].content.parts[0].text;
+        console.log('📄 Contenido del análisis de score:', content);
+        
+        const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          console.log('📊 Datos parseados del score:', data);
+          if (data.scoreCompliance) {
+            console.log('✅ Score desde Gemini:', data.scoreCompliance);
+            return data.scoreCompliance;
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error al extraer score de Gemini:', e);
       }
-    } catch (e) {
-      console.error('Error al extraer nivel de riesgo:', e);
     }
-    return 'SIN DATOS';
-  }
-
-  getPrediccionesFormateadas(): any[] {
-    if (!this.analisisPredictivo?.predicciones?.candidates?.[0]?.content?.parts?.[0]?.text) return [];
     
-    try {
-      const content = this.analisisPredictivo.predicciones.candidates[0].content.parts[0].text;
-      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[1]);
-        return [
-          { titulo: 'Próxima Semana', contenido: data.proximaSemana || 'Sin predicción' },
-          { titulo: 'Alerta Fiscalización', contenido: data.alertaFiscalizacion || 'Sin alerta' },
-          { titulo: 'Tendencia Multas', contenido: data.tendenciaMultas || 'Sin tendencia' },
-          { titulo: 'Recomendación Urgente', contenido: data.recomendacionUrgente || 'Sin recomendaciones' }
-        ];
-      }
-    } catch (e) {
-      console.error('Error al extraer predicciones:', e);
+    console.log('⚠️ Usando score por defecto');
+    return 75; // Valor por defecto
+  }  getNivelRiesgoFromAnalysis(): string {
+    console.log('🔍 Buscando nivel de riesgo...');
+    
+    // Opción 1: Nivel de riesgo directo del análisis (fallback)
+    if (this.analisisPredictivo?.nivelRiesgo) {
+      console.log('✅ Nivel de riesgo desde fallback:', this.analisisPredictivo.nivelRiesgo);
+      return this.analisisPredictivo.nivelRiesgo;
     }
-    return [];
+    
+    // Opción 2: Nivel de riesgo desde Gemini AI
+    if (this.analisisPredictivo?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      try {
+        const content = this.analisisPredictivo.candidates[0].content.parts[0].text;
+        const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          console.log('📊 Datos parseados del nivel de riesgo:', data);
+          if (data.nivelRiesgo) {
+            console.log('✅ Nivel de riesgo desde Gemini:', data.nivelRiesgo);
+            return data.nivelRiesgo;
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error al extraer nivel de riesgo:', e);
+      }
+    }
+    
+    // Opción 3: Desde patrones de Gemini
+    if (this.analisisPredictivo?.patrones?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      try {
+        const content = this.analisisPredictivo.patrones.candidates[0].content.parts[0].text;
+        const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          if (data.nivelRiesgoActual) {
+            console.log('✅ Nivel de riesgo desde patrones Gemini:', data.nivelRiesgoActual);
+            return data.nivelRiesgoActual;
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error al extraer nivel de riesgo de patrones:', e);
+      }
+    }
+    
+    // Opción 4: Calcular basado en el score
+    const score = this.getScoreFromAnalysis();
+    console.log('📊 Calculando nivel de riesgo basado en score:', score);
+    if (score >= 80) return 'BAJO';
+    if (score >= 60) return 'MEDIO';
+    return 'ALTO';
+  }  getPrediccionesFormateadas(): any[] {
+    console.log('🔍 Buscando predicciones...');
+    
+    // Opción 1: Predicciones desde fallback
+    if (this.analisisPredictivo?.predicciones && !this.analisisPredictivo?.predicciones?.candidates) {
+      console.log('✅ Predicciones desde fallback');
+      const pred = this.analisisPredictivo.predicciones;
+      return [
+        { titulo: 'Próxima Semana', contenido: pred.proximaSemana || 'Sin predicción' },
+        { titulo: 'Alerta Fiscalización', contenido: pred.alertaFiscalizacion || 'Sin alerta' },
+        { titulo: 'Tendencia Multas', contenido: pred.tendenciaMultas || 'Sin tendencia' }
+      ];
+    }
+    
+    // Opción 2: Predicciones desde Gemini AI
+    if (this.analisisPredictivo?.predicciones?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      try {
+        const content = this.analisisPredictivo.predicciones.candidates[0].content.parts[0].text;
+        console.log('📄 Contenido de predicciones Gemini:', content);
+        
+        const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          console.log('📊 Datos de predicciones parseados:', data);
+          
+          const predicciones = [
+            { titulo: 'Próxima Semana', contenido: data.proximaSemana || 'Sin predicción' },
+            { titulo: 'Alerta Fiscalización', contenido: data.alertaFiscalizacion || 'Sin alerta' },
+            { titulo: 'Tendencia Multas', contenido: data.tendenciaMultas || 'Sin tendencia' },
+            { titulo: 'Recomendación Urgente', contenido: data.recomendacionUrgente || 'Sin recomendaciones' }
+          ];
+          
+          console.log('✅ Predicciones formateadas desde Gemini:', predicciones);
+          return predicciones;
+        }
+      } catch (e) {
+        console.error('❌ Error al extraer predicciones:', e);
+      }
+    }
+    
+    // Predicciones por defecto
+    console.log('⚠️ Usando predicciones por defecto');
+    return [
+      { titulo: 'Próxima Semana', contenido: 'Se esperan nuevas notificaciones según patrón histórico' },
+      { titulo: 'Alerta Fiscalización', contenido: 'Probabilidad baja de fiscalización inmediata' },
+      { titulo: 'Tendencia Multas', contenido: 'Mantener seguimiento de obligaciones pendientes' },
+      { titulo: 'Recomendación Urgente', contenido: 'Revisar documentación tributaria' }    ];
   }
 
   getRecomendacionesFormateadas(): string[] {
     console.log('🔍 Análisis predictivo completo:', this.analisisPredictivo);
     
-    // Opción 1: Desde candidates[0] (score de compliance)
+    // Opción 1: Recomendaciones directas desde fallback
+    if (this.analisisPredictivo?.recomendaciones && Array.isArray(this.analisisPredictivo.recomendaciones)) {
+      console.log('✅ Recomendaciones encontradas directamente desde fallback:', this.analisisPredictivo.recomendaciones);
+      return this.analisisPredictivo.recomendaciones.map((item: string) => 
+        this.limpiarRecomendacion(item)
+      );
+    }
+    
+    // Opción 2: Desde candidates[0] (score de compliance de Gemini)
     if (this.analisisPredictivo?.candidates?.[0]?.content?.parts?.[0]?.text) {
       try {
         const content = this.analisisPredictivo.candidates[0].content.parts[0].text;
-        console.log('📄 Contenido del análisis:', content);
+        console.log('📄 Contenido del análisis Gemini:', content);
         
         const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
         if (jsonMatch) {
@@ -1041,7 +1124,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
           if (data.areasMejora && Array.isArray(data.areasMejora) && data.areasMejora.length > 0) {
             console.log('✅ Recomendaciones encontradas en areasMejora:', data.areasMejora);
-            // Procesar cada elemento del array por si contiene múltiples recomendaciones
             const recomendacionesProcesadas: string[] = [];
             data.areasMejora.forEach((item: string) => {
               const procesadas = this.procesarTextoRecomendaciones(item);
@@ -1050,29 +1132,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
             return recomendacionesProcesadas;
           }
 
-          // Si areasMejora no es un array, intentar extraer las recomendaciones del texto
           if (data.areasMejora && typeof data.areasMejora === 'string') {
             const recomendaciones = this.procesarTextoRecomendaciones(data.areasMejora);
             if (recomendaciones.length > 0) {
               console.log('✅ Recomendaciones extraídas del texto:', recomendaciones);
               return recomendaciones;
             }
-          }
-        }
+          }        }
       } catch (e) {
-        console.error('❌ Error al extraer recomendaciones de candidates:', e);
+        console.error('❌ Error al extraer recomendaciones de Gemini:', e);
       }
-    }
-
-    // Opción 2: Desde recomendaciones directas (si las hubiera)
-    if (this.analisisPredictivo?.recomendaciones && Array.isArray(this.analisisPredictivo.recomendaciones)) {
-      console.log('✅ Recomendaciones encontradas directamente:', this.analisisPredictivo.recomendaciones);
-      const recomendacionesProcesadas: string[] = [];
-      this.analisisPredictivo.recomendaciones.forEach((item: string) => {
-        const procesadas = this.procesarTextoRecomendaciones(item);
-        recomendacionesProcesadas.push(...procesadas);
-      });
-      return recomendacionesProcesadas;
     }
     
     // Opción 3: Recomendaciones predeterminadas si no se encuentran
@@ -1085,20 +1154,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
       'Mantener actualizada la documentación contable y tributaria'
     ];
   }
-
   getPatronesFromAnalysis(): string {
-    if (!this.analisisPredictivo?.patrones?.candidates?.[0]?.content?.parts?.[0]?.text) return '';
-    
-    try {
-      const content = this.analisisPredictivo.patrones.candidates[0].content.parts[0].text;
-      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
-      if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[1]);
-        return data.tendenciaGeneral || data.observacionesClave || '';
-      }
-    } catch (e) {
-      console.error('Error al extraer patrones:', e);
+    // Opción 1: Patrones desde fallback
+    if (this.analisisPredictivo?.patrones && !this.analisisPredictivo?.patrones?.candidates) {
+      const patrones = this.analisisPredictivo.patrones;
+      return patrones.tendenciaGeneral || patrones.observacionesClave || '';
     }
+    
+    // Opción 2: Patrones desde Gemini AI
+    if (this.analisisPredictivo?.patrones?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      try {
+        const content = this.analisisPredictivo.patrones.candidates[0].content.parts[0].text;
+        const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[1]);
+          return data.tendenciaGeneral || data.observacionesClave || '';
+        }
+      } catch (e) {
+        console.error('Error al extraer patrones:', e);
+      }
+    }
+    
     return '';
   }
 
@@ -1312,18 +1388,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return `Has recibido ${total} notificaciones distribuidas en ${this.rankingNotificaciones.length} tipos diferentes. "${primerTipo.nombre}" es el más frecuente.`;
     }
   }
-
   getEficienciaClasificacion(): number {
     if (!this.metricas) return 0;
     
     const total = this.metricas.resumenGeneral.totalCorreos;
     if (total === 0) return 0;
     
-    // Calcular basado en correos que NO son "sin etiquetar"
-    // Asumiendo que los correos sin etiquetar serían la diferencia entre total y los clasificados
-    const clasificados = this.metricas.resumenGeneral.multas + 
-                         this.metricas.resumenGeneral.cobranzas + 
-                         this.metricas.resumenGeneral.fiscalizaciones;
+    // Calcular basado en TODOS los correos clasificados
+    const clasificados = this.metricas.resumenGeneral.muyImportantes + 
+                         this.metricas.resumenGeneral.importantes +
+                         this.metricas.resumenGeneral.recurrentes;
     
     return Math.round((clasificados / total) * 100);
   }
@@ -1361,8 +1435,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .replace(/^\-+\s*/, '')           // Eliminar guiones al inicio
       .replace(/\-+$/, '')              // Eliminar guiones al final
       .replace(/\*\*/g, '')             // Eliminar asteriscos dobles
-      .replace(/\*/g, '')               // Eliminar asteriscos simples restantes
-      .replace(/^\d+\.\s*/, '')         // Eliminar numeración (1. 2. etc.)
+      .replace(/\*/g, '')               // Eliminar asteriscos simples restantes      .replace(/^\d+\.\s*/, '')         // Eliminar numeración (1. 2. etc.)
       .replace(/^[-•]\s*/, '')          // Eliminar viñetas
       .trim();                          // Eliminar espacios en blanco
   }
@@ -1372,11 +1445,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!this.metricas) return 0;
     
     const total = this.metricas.resumenGeneral.totalCorreos;
-    const clasificados = this.metricas.resumenGeneral.multas + 
-                        this.metricas.resumenGeneral.cobranzas + 
-                        this.metricas.resumenGeneral.fiscalizaciones +
-                        this.metricas.resumenGeneral.muyImportantes +
-                        this.metricas.resumenGeneral.importantes;
+    // Contar TODOS los correos clasificados (incluyendo RECURRENTES)
+    const clasificados = this.metricas.resumenGeneral.muyImportantes + 
+                         this.metricas.resumenGeneral.importantes +
+                         this.metricas.resumenGeneral.recurrentes;
     
     return Math.max(0, total - clasificados);
   }
